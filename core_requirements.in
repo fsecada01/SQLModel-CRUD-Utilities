@@ -1,0 +1,4 @@
+loguru
+python-dateutil
+python-dotenv
+sqlmodel
