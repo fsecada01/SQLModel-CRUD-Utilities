@@ -59,3 +59,28 @@ line_length = 80
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "sqlmodel_crud_utilities"
+version = "0.0.1"
+authors = [
+    { name="Francis Secada", email = "francis.secada@gmail.com" }
+]
+description = "A set of CRUD utilities to expedite operations with SQLModel"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+
+dynamic = ["dependencies"]
+
+[project.urls]
+"Homepage" = "https://github.com/fsecada01/SQLModel-CRUD-Utilities"
+"Bug Tracker" = "https://github.com/fsecada01/SQLModel-CRUD-Utilities/issues"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["core_requirements.txt"]}
+optional-dependencies = {dev = { file = ["dev_requirements.txt"] }}

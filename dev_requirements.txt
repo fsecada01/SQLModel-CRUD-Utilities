@@ -6,6 +6,8 @@
 #
 black==23.11.0
     # via -r dev_requirements.in
+build==1.0.3
+    # via -r dev_requirements.in
 cfgv==3.4.0
     # via pre-commit
 click==8.1.7
@@ -13,6 +15,7 @@ click==8.1.7
 colorama==0.4.6
     # via
     #   -c core_requirements.txt
+    #   build
     #   click
 distlib==0.3.7
     # via virtualenv
@@ -27,7 +30,9 @@ mypy-extensions==1.0.0
 nodeenv==1.8.0
     # via pre-commit
 packaging==23.2
-    # via black
+    # via
+    #   black
+    #   build
 pathspec==0.11.2
     # via black
 platformdirs==3.11.0
@@ -36,6 +41,8 @@ platformdirs==3.11.0
     #   virtualenv
 pre-commit==3.5.0
     # via -r dev_requirements.in
+pyproject-hooks==1.0.0
+    # via build
 pyyaml==6.0.1
     # via pre-commit
 ruff==0.1.5

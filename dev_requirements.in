@@ -1,6 +1,7 @@
 -c core_requirements.txt
 
 black
+build
 isort
 pre-commit
 ruff
