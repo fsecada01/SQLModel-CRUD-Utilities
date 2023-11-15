@@ -82,11 +82,10 @@ async def get_one_or_create(
     :param kwargs: keyword args
     :return: Tuple[Row, bool]
     """
+
     async def _get_entry(sqlmodel, **key_args):
         stmnt = select(sqlmodel).filter_by(**key_args)
-        results = await get_result_from_query(
-            query=stmnt, session=session_inst
-        )
+        results = await get_result_from_query(query=stmnt, session=session_inst)
 
         if results:
             if selectin and select_in_key:
