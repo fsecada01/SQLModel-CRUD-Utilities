@@ -1,5 +1,3 @@
-import importlib
-import os
 from typing import Type
 
 from dateutil.parser import parse as date_parse
@@ -11,32 +9,9 @@ from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.sql.expression import SelectOfScalar
 
+from sqlmodel_crud_utils.utils import get_sql_dialect_import, get_val
+
 load_dotenv()  # take environment variables from .env.
-
-
-def get_val(val: str):
-    """
-    Quick utility to pull environmental variable values after
-    loading dot env. It does one thing: either return a value
-    from a string representation of an environmental key or
-    a Null value.
-
-    :param val: str
-    :return: str | None
-    """
-    return os.environ.get(val, None)
-
-
-def get_sql_dialect_import(dialect: str):
-    """
-    A utility function to dynamically load the correct SQL Dialect from the
-    SQLAlchemy package.
-    :param dialect: str
-
-    :return: func
-    """
-    return importlib.import_module(f"sqlalchemy.dialects" f".{dialect}").insert
-
 
 upsert = get_sql_dialect_import(dialect=get_val("SQL_DIALECT"))
 
