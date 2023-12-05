@@ -21,7 +21,7 @@ distlib==0.3.7
     # via virtualenv
 filelock==3.13.1
     # via virtualenv
-identify==2.5.31
+identify==2.5.32
     # via pre-commit
 isort==5.12.0
     # via -r dev_requirements.in
@@ -35,7 +35,7 @@ packaging==23.2
     #   build
 pathspec==0.11.2
     # via black
-platformdirs==3.11.0
+platformdirs==4.1.0
     # via
     #   black
     #   virtualenv
@@ -45,9 +45,9 @@ pyproject-hooks==1.0.0
     # via build
 pyyaml==6.0.1
     # via pre-commit
-ruff==0.1.5
+ruff==0.1.7
     # via -r dev_requirements.in
-virtualenv==20.24.6
+virtualenv==20.25.0
     # via pre-commit
 
 # The following packages are considered to be unsafe in a requirements file:

@@ -82,5 +82,5 @@ dynamic = ["dependencies"]
 "Bug Tracker" = "https://github.com/fsecada01/SQLModel-CRUD-Utilities/issues"
 
 [tool.setuptools.dynamic]
-dependencies = {file = ["core_requirements.txt"]}
-optional-dependencies = {dev = { file = ["dev_requirements.txt"] }}
+dependencies = {file = ["core_requirements.in"]}
+optional-dependencies = {dev = { file = ["dev_requirements.in"] }}
