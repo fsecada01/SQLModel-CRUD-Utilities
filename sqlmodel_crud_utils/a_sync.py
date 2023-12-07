@@ -16,6 +16,7 @@ load_dotenv()  # take environment variables from .env.
 upsert = get_sql_dialect_import(dialect=get_val("SQL_DIALECT"))
 
 
+@logger.catch
 async def get_result_from_query(query: SelectOfScalar, session: AsyncSession):
     """
     Processes an SQLModel query object and returns a singular result from the
@@ -37,6 +38,7 @@ async def get_result_from_query(query: SelectOfScalar, session: AsyncSession):
     return results
 
 
+@logger.catch
 async def get_one_or_create(
     session_inst: AsyncSession,
     model: type[SQLModel],
@@ -86,6 +88,7 @@ async def get_one_or_create(
         return created, False
 
 
+@logger.catch
 async def write_row(data_row: Type[SQLModel], session_inst: AsyncSession):
     """
     Writes a new instance of an SQLModel ORM model to the database, with an
@@ -110,6 +113,7 @@ async def write_row(data_row: Type[SQLModel], session_inst: AsyncSession):
         return False, None
 
 
+@logger.catch
 async def insert_data_rows(data_rows, session_inst: AsyncSession):
     try:
         session_inst.add_all(data_rows)
@@ -145,6 +149,7 @@ async def insert_data_rows(data_rows, session_inst: AsyncSession):
         return status, {"success": processed_rows, "failed": failed_rows}
 
 
+@logger.catch
 async def get_row(
     id_str: str or int,
     session_inst: AsyncSession,
@@ -172,6 +177,7 @@ async def get_row(
     return success, row
 
 
+@logger.catch
 async def get_rows(
     session_inst: AsyncSession,
     model: type[SQLModel],
@@ -244,6 +250,7 @@ async def get_rows(
     return success, results
 
 
+@logger.catch
 async def get_rows_within_id_list(
     id_str_list: list[str | int],
     session_inst: AsyncSession,
@@ -261,6 +268,7 @@ async def get_rows_within_id_list(
     return success, results
 
 
+@logger.catch
 async def delete_row(
     id_str: str or int,
     session_inst: AsyncSession,
@@ -290,6 +298,7 @@ async def delete_row(
     return success
 
 
+@logger.catch
 async def bulk_upsert_mappings(
     payload: list,
     session_inst: AsyncSession,
@@ -316,6 +325,7 @@ async def bulk_upsert_mappings(
         return False
 
 
+@logger.catch
 async def update_row(
     id_str: int | str,
     data: dict,
