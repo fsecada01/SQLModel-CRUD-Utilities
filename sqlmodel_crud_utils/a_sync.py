@@ -313,18 +313,18 @@ async def bulk_upsert_mappings(
             index_elements=[getattr(model, x) for x in pk_fields],
             set_={k: getattr(stmnt.excluded, k) for k in payload[0].keys()},
         )
-        await session_inst.execute(stmnt)
+        results = await session_inst.execute(stmnt)
 
         await session_inst.commit()
 
-        return True
+        return True, results.all()
 
     except Exception as e:
         logger.error(
             f"Failed to upsert values to DB. Please see error: "
             f"{type(e), e, e.args}"
         )
-        return False
+        return False, []
 
 
 @logger.catch
