@@ -300,12 +300,14 @@ def bulk_upsert_mappings(
     payload: list,
     session_inst: Session,
     model: type[SQLModel],
-    pk_field: str = "id",
+    pk_fields: list[str] | None = None,
 ):
+    if not pk_fields:
+        pk_fields = ["id"]
     try:
         stmnt = upsert(model).values(payload)
         stmnt = stmnt.on_conflict_do_update(
-            index_elements=[getattr(model, pk_field)],
+            index_elements=[getattr(model, x) for x in pk_fields],
             set_={k: getattr(stmnt.excluded, k) for k in payload[0].keys()},
         )
         session_inst.execute(stmnt)
