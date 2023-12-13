@@ -304,24 +304,16 @@ def bulk_upsert_mappings(
 ):
     if not pk_fields:
         pk_fields = ["id"]
-    try:
-        stmnt = upsert(model).values(payload)
-        stmnt = stmnt.on_conflict_do_update(
-            index_elements=[getattr(model, x) for x in pk_fields],
-            set_={k: getattr(stmnt.excluded, k) for k in payload[0].keys()},
-        )
-        results = session_inst.execute(stmnt)
+    stmnt = upsert(model).values(payload)
+    stmnt = stmnt.on_conflict_do_update(
+        index_elements=[getattr(model, x) for x in pk_fields],
+        set_={k: getattr(stmnt.excluded, k) for k in payload[0].keys()},
+    )
+    results = session_inst.execute(stmnt)
 
-        session_inst.commit()
+    session_inst.commit()
 
-        return True, results.all()
-
-    except Exception as e:
-        logger.error(
-            f"Failed to upsert values to DB. Please see error: "
-            f"{type(e), e, e.args}"
-        )
-        return False, []
+    return True, results.all()
 
 
 @logger.catch
