@@ -309,9 +309,11 @@ def bulk_upsert_mappings(
         index_elements=[getattr(model, x) for x in pk_fields],
         set_={k: getattr(stmnt.excluded, k) for k in payload[0].keys()},
     )
-    results = session_inst.execute(stmnt)
+    session_inst.execute(stmnt)
 
-    session_inst.commit()
+    results = session_inst.scalars(
+        stmnt.returning(model), execution_options={"populate_existing": True}
+    )
 
     return True, results.all()
 

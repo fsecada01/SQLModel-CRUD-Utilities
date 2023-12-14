@@ -312,9 +312,11 @@ async def bulk_upsert_mappings(
         index_elements=[getattr(model, x) for x in pk_fields],
         set_={k: getattr(stmnt.excluded, k) for k in payload[0].keys()},
     )
-    results = await session_inst.execute(stmnt)
+    await session_inst.execute(stmnt)
 
-    await session_inst.commit()
+    results = await session_inst.scalars(
+        stmnt.returning(model), execution_options={"population_existing": True}
+    )
 
     return True, results.all()
 
