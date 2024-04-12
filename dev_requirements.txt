@@ -4,9 +4,9 @@
 #
 #    pip-compile --strip-extras dev_requirements.in
 #
-black==23.11.0
+black==24.3.0
     # via -r dev_requirements.in
-build==1.0.3
+build==1.2.1
     # via -r dev_requirements.in
 cfgv==3.4.0
     # via pre-commit
@@ -17,37 +17,37 @@ colorama==0.4.6
     #   -c core_requirements.txt
     #   build
     #   click
-distlib==0.3.7
+distlib==0.3.8
     # via virtualenv
-filelock==3.13.1
+filelock==3.13.4
     # via virtualenv
-identify==2.5.33
+identify==2.5.35
     # via pre-commit
-isort==5.12.0
+isort==5.13.2
     # via -r dev_requirements.in
 mypy-extensions==1.0.0
     # via black
 nodeenv==1.8.0
     # via pre-commit
-packaging==23.2
+packaging==24.0
     # via
     #   black
     #   build
-pathspec==0.11.2
+pathspec==0.12.1
     # via black
-platformdirs==4.1.0
+platformdirs==4.2.0
     # via
     #   black
     #   virtualenv
-pre-commit==3.5.0
+pre-commit==3.7.0
     # via -r dev_requirements.in
 pyproject-hooks==1.0.0
     # via build
 pyyaml==6.0.1
     # via pre-commit
-ruff==0.1.7
+ruff==0.3.7
     # via -r dev_requirements.in
-virtualenv==20.25.0
+virtualenv==20.25.1
     # via pre-commit
 
 # The following packages are considered to be unsafe in a requirements file:

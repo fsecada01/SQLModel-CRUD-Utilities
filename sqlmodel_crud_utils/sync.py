@@ -27,11 +27,11 @@ def get_result_from_query(query: SelectOfScalar, session: Session):
 
     :return: Row
     """
-    results = session.exec(query)
+    results = session.execute(query)
     try:
         results = results.one_or_none()
     except MultipleResultsFound:
-        results = session.exec(query)
+        results = session.execute(query)
         results = results.first()
 
     return results
@@ -162,7 +162,7 @@ def get_row(
 
         for key in select_in_keys:
             stmnt = stmnt.options(selectinload(getattr(model, key)))
-    results = session_inst.exec(stmnt)
+    results = session_inst.execute(stmnt)
 
     row = results.one_or_none()
 
@@ -240,7 +240,7 @@ def get_rows(
                 stmnt = stmnt.options(selectinload(getattr(model, key)))
 
     stmnt = stmnt.offset(page - 1).limit(page_size)
-    _result = session_inst.exec(stmnt)
+    _result = session_inst.execute(stmnt)
     results = _result.all()
     success = True if len(results) > 0 else False
 
@@ -255,7 +255,7 @@ def get_rows_within_id_list(
     pk_field: str = "id",
 ):
     stmnt = select(model).where(getattr(model, pk_field).in_(id_str_list))
-    results = session_inst.exec(stmnt)
+    results = session_inst.execute(stmnt)
 
     if results:
         success = True
@@ -274,7 +274,7 @@ def delete_row(
 ):
     success = False
     stmnt = select(model).where(getattr(model, pk_field) == id_str)
-    results = session_inst.exec(stmnt)
+    results = session_inst.execute(stmnt)
 
     row = results.one_or_none()
 
@@ -328,7 +328,7 @@ def update_row(
 ):
     success = False
     stmnt = select(model).where(getattr(model, pk_field) == id_str)
-    results = session_inst.exec(stmnt)
+    results = session_inst.execute(stmnt)
 
     row = results.one_or_none()
 

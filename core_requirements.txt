@@ -8,25 +8,25 @@ annotated-types==0.6.0
     # via pydantic
 colorama==0.4.6
     # via loguru
-greenlet==3.0.1
+greenlet==3.0.3
     # via sqlalchemy
 loguru==0.7.2
     # via -r core_requirements.in
-pydantic==2.5.2
+pydantic==2.7.0
     # via sqlmodel
-pydantic-core==2.14.5
+pydantic-core==2.18.1
     # via pydantic
-python-dateutil==2.8.2
+python-dateutil==2.9.0.post0
     # via -r core_requirements.in
-python-dotenv==1.0.0
+python-dotenv==1.0.1
     # via -r core_requirements.in
 six==1.16.0
     # via python-dateutil
-sqlalchemy==2.0.23
+sqlalchemy==2.0.29
     # via sqlmodel
-sqlmodel==0.0.14
+sqlmodel==0.0.16
     # via -r core_requirements.in
-typing-extensions==4.8.0
+typing-extensions==4.11.0
     # via
     #   pydantic
     #   pydantic-core
