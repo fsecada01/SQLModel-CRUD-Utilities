@@ -4,7 +4,7 @@ from dateutil.parser import parse as date_parse
 from dotenv import load_dotenv
 from loguru import logger
 from sqlalchemy.exc import MultipleResultsFound
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import lazyload, selectinload
 from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.sql.expression import SelectOfScalar
@@ -156,6 +156,8 @@ async def get_row(
     model: type[SQLModel],
     selectin: bool = False,
     select_in_keys: list[str] | None = None,
+    lazy: bool = False,
+    lazy_load_keys: list[str] | None = None,
     pk_field: str = "id",
 ):
     stmnt = select(model).where(getattr(model, pk_field) == id_str)
@@ -165,6 +167,11 @@ async def get_row(
 
         for key in select_in_keys:
             stmnt = stmnt.options(selectinload(getattr(model, key)))
+    if lazy and lazy_load_keys:
+        if isinstance(lazy_load_keys, list) is False:
+            lazy_load_keys = [lazy_load_keys]
+        for key in lazy_load_keys:
+            stmnt = stmnt.options(lazyload(getattr(model, key)))
     results = await session_inst.exec(stmnt)
 
     row = results.one_or_none()
@@ -183,6 +190,8 @@ async def get_rows(
     model: type[SQLModel],
     selectin: bool = False,
     select_in_keys: list[str] | None = None,
+    lazy: bool = False,
+    lazy_load_keys: list[str] | None = None,
     page_size: int = 100,
     page: int = 1,
     stmnt: SelectOfScalar | None = None,
@@ -241,6 +250,12 @@ async def get_rows(
                 select_in_keys = [select_in_keys]
             for key in select_in_keys:
                 stmnt = stmnt.options(selectinload(getattr(model, key)))
+
+        if lazy and lazy_load_keys:
+            if isinstance(lazy_load_keys, list) is False:
+                lazy_load_keys = [lazy_load_keys]
+            for key in lazy_load_keys:
+                stmnt = stmnt.options(lazyload(getattr(model, key)))
 
     stmnt = stmnt.offset(page - 1).limit(page_size)
     _result = await session_inst.exec(stmnt)
