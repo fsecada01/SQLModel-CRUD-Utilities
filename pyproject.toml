@@ -1,10 +1,10 @@
 [tool.ruff]
-select = ["E", "F", "B"]
+lint.select = ["E", "F", "B"]
 #select = ["E", "F", "I", "PL", "I", "B"]
-ignore = ["B008"]
+lint.ignore = ["B008"]
 fix = true
-ignore-init-module-imports = true
-unfixable = []
+lint.ignore-init-module-imports = true
+lint.unfixable = []
 exclude = [
     ".bzr",
     ".direnv",
@@ -31,10 +31,10 @@ exclude = [
 
 line-length = 80
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.mccabe]
 max-complexity = 10
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F403", "F405", "E501"]
 "consts.py" = ["E501"]
 
