@@ -333,6 +333,8 @@ async def bulk_upsert_mappings(
         stmnt.returning(model), execution_options={"population_existing": True}
     )
 
+    await session_inst.commit()
+
     return True, results.all()
 
 

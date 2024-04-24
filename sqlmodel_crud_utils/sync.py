@@ -330,6 +330,8 @@ def bulk_upsert_mappings(
         stmnt.returning(model), execution_options={"populate_existing": True}
     )
 
+    session_inst.commit()
+
     return True, results.all()
 
 
