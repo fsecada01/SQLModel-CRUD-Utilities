@@ -250,7 +250,7 @@ async def get_rows(
                         and is_date(val, fuzzy=False)
                     ):
                         val = date_parse(val)
-                    stmnt = stmnt.where(getattr(model, model_key) < val)
+                    stmnt = stmnt.where(getattr(model, model_key) < int(val))
                 elif "__gte" in key:
                     model_key = key.replace("__gte", "")
                     val = kwargs.pop(key)
@@ -260,7 +260,7 @@ async def get_rows(
                         and is_date(val, fuzzy=False)
                     ):
                         val = date_parse(val)
-                    stmnt = stmnt.where(getattr(model, model_key) > val)
+                    stmnt = stmnt.where(getattr(model, model_key) > int(val))
             sort_desc, sort_field = (
                 kwargs.pop(x, None) for x in ("sort_desc", "sort_field")
             )
