@@ -239,7 +239,8 @@ async def get_rows(
     if stmnt is None:
         stmnt = select(model)
         if kwargs:
-            for key in kwargs:
+            keys = list(kwargs.keys())
+            for key in keys:
                 if "__lte" in key:
                     model_key = key.replace("__lte", "")
                     val = kwargs.pop(key)
