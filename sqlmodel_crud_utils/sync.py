@@ -1,3 +1,7 @@
+"""
+
+"""
+
 from typing import Type
 
 from dateutil.parser import parse as date_parse
@@ -8,7 +12,7 @@ from sqlalchemy.orm import lazyload, selectinload
 from sqlmodel import Session, SQLModel, select
 from sqlmodel.sql.expression import SelectOfScalar
 
-from sqlmodel_crud_utils.utils import get_sql_dialect_import, get_val
+from sqlmodel_crud_utils.utils import get_sql_dialect_import, get_val, is_date
 
 load_dotenv()  # take environment variables from .env.
 
@@ -27,11 +31,11 @@ def get_result_from_query(query: SelectOfScalar, session: Session):
 
     :return: Row
     """
-    results = session.execute(query)
+    results = session.exec(query)
     try:
         results = results.one_or_none()
     except MultipleResultsFound:
-        results = session.execute(query)
+        results = session.exec(query)
         results = results.first()
 
     return results
@@ -187,7 +191,7 @@ def get_row(
             lazy_load_keys = [lazy_load_keys]
         for key in lazy_load_keys:
             stmnt = stmnt.options(lazyload(getattr(model, key)))
-    results = session_inst.execute(stmnt)
+    results = session_inst.exec(stmnt)
 
     row = results.one_or_none()
 
@@ -232,39 +236,19 @@ def get_rows(
     if stmnt is None:
         stmnt = select(model)
         if kwargs:
-            if ["date" in x for x in kwargs] and any(
-                x in y for y in kwargs for x in ("lte", "gte")
-            ):
-                date_keys = [x for x in kwargs.keys() if "date" in x]
-                for key in date_keys:
-                    if "lte" in key:
-                        model_key = key.replace("__lte", "")
-                        date_val = kwargs.pop(key)
-                        if isinstance(date_val, str):
-                            date_val = date_parse(date_val)
-                        stmnt = stmnt.where(
-                            getattr(model, model_key) < date_val
-                        )
-                    elif "gte" in key:
-                        model_key = key.replace("__gte", "")
-                        logger.info(model_key)
-                        date_val = kwargs.pop(key)
-                        if isinstance(date_val, str):
-                            date_val = date_parse(date_val)
-                        stmnt = stmnt.where(
-                            getattr(model, model_key) > date_val
-                        )
-                    else:
-                        date_val = kwargs.pop(key)
-                        if isinstance(date_val, str):
-                            date_val = date_parse(date_val)
-                        stmnt = stmnt.where(getattr(model, key) == date_val)
-            elif "date" in kwargs:
-                date_keys = [x for x in kwargs.keys() if "date" in x]
-                for key in date_keys:
-                    stmnt = stmnt.where(getattr(model, key) == kwargs.pop(key))
-            else:
-                pass
+            for key in kwargs:
+                if "__lte" in key:
+                    model_key = key.replace("__lte", "")
+                    val = kwargs.pop(key)
+                    if is_date(val, fuzzy=True):
+                        val = date_parse(val)
+                    stmnt = stmnt.where(getattr(model, model_key) < val)
+                elif "__gte" in key:
+                    model_key = key.replace("__gte", "")
+                    val = kwargs.pop(key)
+                    if is_date(val, fuzzy=True):
+                        val = date_parse(val)
+                    stmnt = stmnt.where(getattr(model, model_key) > val)
             sort_desc, sort_field = (
                 kwargs.pop(x, None) for x in ("sort_desc", "sort_field")
             )
@@ -294,7 +278,7 @@ def get_rows(
                 stmnt = stmnt.options(lazyload(getattr(model, key)))
 
     stmnt = stmnt.offset(page - 1).limit(page_size)
-    _result = session_inst.execute(stmnt)
+    _result = session_inst.exec(stmnt)
     results = _result.all()
     success = True if len(results) > 0 else False
 
@@ -317,7 +301,7 @@ def get_rows_within_id_list(
     :return:
     """
     stmnt = select(model).where(getattr(model, pk_field).in_(id_str_list))
-    results = session_inst.execute(stmnt)
+    results = session_inst.exec(stmnt)
 
     if results:
         success = True
@@ -344,7 +328,7 @@ def delete_row(
     """
     success = False
     stmnt = select(model).where(getattr(model, pk_field) == id_str)
-    results = session_inst.execute(stmnt)
+    results = session_inst.exec(stmnt)
 
     row = results.one_or_none()
 
@@ -387,7 +371,7 @@ def bulk_upsert_mappings(
         index_elements=[getattr(model, x) for x in pk_fields],
         set_={k: getattr(stmnt.excluded, k) for k in payload[0].keys()},
     )
-    session_inst.execute(stmnt)
+    session_inst.exec(stmnt)
 
     results = session_inst.scalars(
         stmnt.returning(model), execution_options={"populate_existing": True}
@@ -406,9 +390,18 @@ def update_row(
     model: type[SQLModel],
     pk_field: str = "id",
 ):
+    """
+
+    :param id_str:
+    :param data:
+    :param session_inst:
+    :param model:
+    :param pk_field:
+    :return:
+    """
     success = False
     stmnt = select(model).where(getattr(model, pk_field) == id_str)
-    results = session_inst.execute(stmnt)
+    results = session_inst.exec(stmnt)
 
     row = results.one_or_none()
 

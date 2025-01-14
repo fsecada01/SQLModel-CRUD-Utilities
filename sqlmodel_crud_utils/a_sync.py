@@ -1,3 +1,7 @@
+"""
+
+"""
+
 from typing import Type
 
 from dateutil.parser import parse as date_parse
@@ -9,7 +13,7 @@ from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.sql.expression import SelectOfScalar
 
-from sqlmodel_crud_utils.utils import get_sql_dialect_import, get_val
+from sqlmodel_crud_utils.utils import get_sql_dialect_import, get_val, is_date
 
 load_dotenv()  # take environment variables from .env.
 
@@ -235,39 +239,19 @@ async def get_rows(
     if stmnt is None:
         stmnt = select(model)
         if kwargs:
-            if ["date" in x for x in kwargs] and any(
-                x in y for y in kwargs for x in ("lte", "gte")
-            ):
-                date_keys = [x for x in kwargs.keys() if "date" in x]
-                for key in date_keys:
-                    if "lte" in key:
-                        model_key = key.replace("__lte", "")
-                        date_val = kwargs.pop(key)
-                        if isinstance(date_val, str):
-                            date_val = date_parse(date_val)
-                        stmnt = stmnt.where(
-                            getattr(model, model_key) < date_val
-                        )
-                    elif "gte" in key:
-                        model_key = key.replace("__gte", "")
-                        logger.info(model_key)
-                        date_val = kwargs.pop(key)
-                        if isinstance(date_val, str):
-                            date_val = date_parse(date_val)
-                        stmnt = stmnt.where(
-                            getattr(model, model_key) > date_val
-                        )
-                    else:
-                        date_val = kwargs.pop(key)
-                        if isinstance(date_val, str):
-                            date_val = date_parse(date_val)
-                        stmnt = stmnt.where(getattr(model, key) == date_val)
-            elif "date" in kwargs:
-                date_keys = [x for x in kwargs.keys() if "date" in x]
-                for key in date_keys:
-                    stmnt = stmnt.where(getattr(model, key) == kwargs.pop(key))
-            else:
-                pass
+            for key in kwargs:
+                if "__lte" in key:
+                    model_key = key.replace("__lte", "")
+                    val = kwargs.pop(key)
+                    if is_date(val, fuzzy=True):
+                        val = date_parse(val)
+                    stmnt = stmnt.where(getattr(model, model_key) < val)
+                elif "__gte" in key:
+                    model_key = key.replace("__gte", "")
+                    val = kwargs.pop(key)
+                    if is_date(val, fuzzy=True):
+                        val = date_parse(val)
+                    stmnt = stmnt.where(getattr(model, model_key) > val)
             sort_desc, sort_field = (
                 kwargs.pop(x, None) for x in ("sort_desc", "sort_field")
             )

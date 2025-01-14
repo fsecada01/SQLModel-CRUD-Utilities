@@ -20,8 +20,8 @@ projects, this package will be continuously supported and developed. A close eye
 will be kept on the SQLModel's ongoing roadmap and eventual uplift to SQLAlchemy
 2.0 and Pydantic 2.0.
 ## Development Roadmap
-- [ ] Release working Alpha version
-- [ ] Test across existing projects to ensure complete coverage
+- [x] Release working Alpha version
+- [x] Test across existing projects to ensure complete coverage
 - [ ] 100% test coverage
 - [ ] Complete autonomous CICD for on-demand testing and building
 
