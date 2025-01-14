@@ -241,13 +241,21 @@ def get_rows(
                 if "__lte" in key:
                     model_key = key.replace("__lte", "")
                     val = kwargs.pop(key)
-                    if isinstance(val, str) and is_date(val, fuzzy=False):
+                    if (
+                        "date" in key
+                        and isinstance(val, str)
+                        and is_date(val, fuzzy=False)
+                    ):
                         val = date_parse(val)
                     stmnt = stmnt.where(getattr(model, model_key) < val)
                 elif "__gte" in key:
                     model_key = key.replace("__gte", "")
                     val = kwargs.pop(key)
-                    if isinstance(val, str) and is_date(val, fuzzy=False):
+                    if (
+                        "date" in key
+                        and isinstance(val, str)
+                        and is_date(val, fuzzy=False)
+                    ):
                         val = date_parse(val)
                     stmnt = stmnt.where(getattr(model, model_key) > val)
             sort_desc, sort_field = (
