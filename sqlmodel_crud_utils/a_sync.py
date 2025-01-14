@@ -115,6 +115,12 @@ async def write_row(data_row: Type[SQLModel], session_inst: AsyncSession):
 
 @logger.catch
 async def insert_data_rows(data_rows, session_inst: AsyncSession):
+    """
+
+    :param data_rows:
+    :param session_inst:
+    :return:
+    """
     try:
         session_inst.add_all(data_rows)
         await session_inst.commit()
@@ -160,6 +166,18 @@ async def get_row(
     lazy_load_keys: list[str] | None = None,
     pk_field: str = "id",
 ):
+    """
+
+    :param id_str:
+    :param session_inst:
+    :param model:
+    :param selectin:
+    :param select_in_keys:
+    :param lazy:
+    :param lazy_load_keys:
+    :param pk_field:
+    :return:
+    """
     stmnt = select(model).where(getattr(model, pk_field) == id_str)
     if selectin and select_in_keys:
         if isinstance(select_in_keys, list) is False:
@@ -194,9 +212,25 @@ async def get_rows(
     lazy_load_keys: list[str] | None = None,
     page_size: int = 100,
     page: int = 1,
+    text_field: str | None = None,
     stmnt: SelectOfScalar | None = None,
     **kwargs,
 ):
+    """
+
+    :param session_inst:
+    :param model:
+    :param selectin:
+    :param select_in_keys:
+    :param lazy:
+    :param lazy_load_keys:
+    :param page_size:
+    :param page:
+    :param text_field:
+    :param stmnt:
+    :param kwargs:
+    :return:
+    """
     # kwargs = {k: v for k, v in kwargs.items() if v}
     if stmnt is None:
         stmnt = select(model)
@@ -243,6 +277,11 @@ async def get_rows(
                 stmnt = stmnt.order_by(getattr(model, sort_field))
             else:
                 pass
+            if text_field:
+                search_val = kwargs.pop(text_field)
+                stmnt = stmnt.where(
+                    getattr(model, text_field).match(search_val)
+                )
             stmnt = stmnt.filter_by(**kwargs)
 
         if selectin and select_in_keys:
@@ -272,6 +311,14 @@ async def get_rows_within_id_list(
     model: type[SQLModel],
     pk_field: str = "id",
 ):
+    """
+
+    :param id_str_list:
+    :param session_inst:
+    :param model:
+    :param pk_field:
+    :return:
+    """
     stmnt = select(model).where(getattr(model, pk_field).in_(id_str_list))
     results = await session_inst.exec(stmnt)
 
@@ -290,6 +337,14 @@ async def delete_row(
     model: type[SQLModel],
     pk_field: str = "id",
 ):
+    """
+
+    :param id_str:
+    :param session_inst:
+    :param model:
+    :param pk_field:
+    :return:
+    """
     success = False
     stmnt = select(model).where(getattr(model, pk_field) == id_str)
     results = await session_inst.exec(stmnt)
@@ -320,6 +375,14 @@ async def bulk_upsert_mappings(
     model: type[SQLModel],
     pk_fields: list[str] | None = None,
 ):
+    """
+
+    :param payload:
+    :param session_inst:
+    :param model:
+    :param pk_fields:
+    :return:
+    """
     if not pk_fields:
         pk_fields = ["id"]
     stmnt = upsert(model).values(payload)
@@ -346,6 +409,15 @@ async def update_row(
     model: type[SQLModel],
     pk_field: str = "id",
 ):
+    """
+
+    :param id_str:
+    :param data:
+    :param session_inst:
+    :param model:
+    :param pk_field:
+    :return:
+    """
     success = False
     stmnt = select(model).where(getattr(model, pk_field) == id_str)
     results = await session_inst.exec(stmnt)
