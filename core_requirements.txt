@@ -8,24 +8,27 @@ greenlet==3.1.1
     # via sqlalchemy
 loguru==0.7.3
     # via -r core_requirements.in
-pydantic==2.10.5
+pydantic==2.11.3
     # via sqlmodel
-pydantic-core==2.27.2
+pydantic-core==2.33.1
     # via pydantic
 python-dateutil==2.9.0.post0
     # via -r core_requirements.in
-python-dotenv==1.0.1
+python-dotenv==1.1.0
     # via -r core_requirements.in
 six==1.17.0
     # via python-dateutil
-sqlalchemy==2.0.37
+sqlalchemy==2.0.40
     # via sqlmodel
-sqlmodel==0.0.22
+sqlmodel==0.0.24
     # via -r core_requirements.in
-typing-extensions==4.12.2
+typing-extensions==4.13.1
     # via
     #   pydantic
     #   pydantic-core
     #   sqlalchemy
+    #   typing-inspection
+typing-inspection==0.4.0
+    # via pydantic
 win32-setctime==1.2.0
     # via loguru
