@@ -64,9 +64,9 @@ def initialize_database():
     yield  # Allow tests depending on this fixture to run
 
     # Optional: Cleanup after all session tests if needed
-    # if os.path.exists(db_file):
-    #     print(f"Removing database file after session: {db_file}")
-    #     os.remove(db_file)
+    if os.path.exists(db_file):
+        print(f"Removing database file after session: {db_file}")
+        os.remove(db_file)
 
 
 # --- Engine Fixtures (Session Scoped) ---

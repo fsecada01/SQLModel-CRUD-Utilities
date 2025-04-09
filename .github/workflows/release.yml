@@ -1,0 +1,167 @@
+name: Release Workflow
+
+on:
+  # Trigger on pushes to branches starting with 'release/'
+  push:
+    branches:
+      - 'release/*'
+  # Trigger on Pull Requests targeting branches starting with 'release/'
+  pull_request:
+    branches:
+      - 'release/*'
+
+# Default permissions required for most jobs
+permissions:
+  contents: read
+
+jobs:
+  # --------------------------------------------------
+  # Job 1: Linting and Testing (Runs on push and PR)
+  # --------------------------------------------------
+  # --------------------------------------------------
+  # Job 1: Linting and Testing (Runs on push and PR)
+  # --------------------------------------------------
+  lint_test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Needed for pre-commit checks on changed files
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13' # Specify your desired Python version
+
+      # Install uv
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+        shell: bash
+
+      # Add uv to the PATH
+      - name: Add uv to PATH
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+        shell: bash
+
+      - name: Install dependencies with uv
+        run: |
+          # Install packages from requirements.txt and additional tools
+          uv pip install -r requirements.txt pytest pytest-cov pre-commit build twine
+
+      - name: Run pre-commit hooks
+        uses: pre-commit/action@v3.0.1
+        # pre-commit might internally use pip/virtualenv, uv installation
+        # primarily affects the main dependency installation step.
+
+      - name: Run tests with coverage
+        run: pytest --cov=sqlmodel_crud_utils --cov-report=xml --cov-report=term # Generate XML and terminal reports
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
+          if-no-files-found: error # Fail if coverage.xml is not generated
+
+  # --------------------------------------------------
+  # Job 2: Build Package (Runs only on push to release/*)
+  # --------------------------------------------------
+  build:
+    name: Build Package
+    needs: lint_test # Depends on successful linting and testing
+    # Only run this job on direct pushes to release/* branches, not on PRs
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Match the version used for testing
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build
+
+      - name: Build source distribution and wheel
+        run: python -m build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist/
+          if-no-files-found: error # Fail if build artifacts aren't found
+
+  # --------------------------------------------------
+  # Job 3: Create GitHub Release (Runs only on push to release/*)
+  # --------------------------------------------------
+  create_release:
+    name: Create GitHub Release
+    needs: build # Depends on successful build
+    # Only run this job on direct pushes to release/* branches
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to create releases and tags
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist
+
+      - name: Extract version from branch name
+        id: get_version
+        # Assumes branch name is like 'release/v1.2.3'
+        # Extracts 'v1.2.3' as the tag name
+        run: echo "TAG_NAME=${GITHUB_REF#refs/heads/release/}" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_version.outputs.TAG_NAME }}
+          name: Release ${{ steps.get_version.outputs.TAG_NAME }}
+          # body: | # Optional: Add release notes here
+          #   Release notes for version ${{ steps.get_version.outputs.TAG_NAME }}
+          #   - Feature A
+          #   - Bugfix B
+          draft: false
+          prerelease: false # Set to true if it's a pre-release
+          files: dist/* # Upload all files from the dist directory
+
+  # --------------------------------------------------
+  # Job 4: Publish to PyPI (Runs only on push to release/*)
+  # --------------------------------------------------
+  publish_pypi:
+    name: Publish to PyPI
+    needs: create_release # Depends on successful release creation
+    # Only run this job on direct pushes to release/* branches
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')
+    runs-on: ubuntu-latest
+    environment: # Optional: Define environment for PyPI publishing rules/secrets
+      name: pypi
+      url: https://pypi.org/p/sqlmodel-crud-utils # Replace with your actual PyPI package URL
+    permissions:
+      id-token: write # Required for trusted publishing
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: python-package-distributions
+          path: dist
+
+      - name: Publish package to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # No need for secrets.PYPI_API_TOKEN if using trusted publishing
+        # with:
+        #   user: __token__
+        #   password: ${{ secrets.PYPI_API_TOKEN }}

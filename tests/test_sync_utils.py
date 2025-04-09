@@ -120,14 +120,13 @@ def test_sync_get_one_or_create_exists_with_selectin(sync_session: Session):
     sync_session.refresh(main_instance)
 
     # Act: Call get_one_or_create with selectin=True
-    with patch("sqlmodel_crud_utils.sync.getattr", side_effect=getattr):
-        instance, created = sync_get_one_or_create(
-            session_inst=sync_session,
-            model=MockModel,
-            selectin=True,
-            select_in_key="related_field_id",
-            name=main_instance.name,
-        )
+    instance, created = sync_get_one_or_create(
+        session_inst=sync_session,
+        model=MockModel,
+        selectin=True,
+        select_in_key="related_field",
+        name=main_instance.name,
+    )
 
     # Assert: Check instance and related field access
     assert instance is not None
@@ -362,14 +361,13 @@ def test_sync_get_row_with_options(sync_session: Session):
     sync_session.refresh(main)
 
     # Act: Get the row with options
-    with patch("sqlmodel_crud_utils.sync.getattr", side_effect=getattr):
-        success, row = sync_get_row(
-            id_str=main.id,
-            session_inst=sync_session,
-            model=MockModel,
-            selectin=True,
-            select_in_keys=["related_field_id"],
-        )
+    success, row = sync_get_row(
+        id_str=main.id,
+        session_inst=sync_session,
+        model=MockModel,
+        selectin=True,
+        select_in_keys=["related_field"],
+    )
 
     # Assert: Check success and data accessibility
     assert success is True
@@ -385,12 +383,26 @@ def test_sync_get_row_with_options(sync_session: Session):
 
 def test_sync_get_rows_basic(sync_session: Session):
     # Arrange: Create some data
+    unique_prefix = f"SyncBasic-{MockModelFactory.build().id}"
     instances = MockModelFactory.build_batch(5)
+    inst_array = []
+    for i, inst in enumerate(instances):
+        row = MockModel(
+            **inst.model_dump(exclude={"id", "name"}),
+            name=f"{unique_prefix}-{i}",
+        )
+        row.id = None
+        inst_array.append(row)
+    instances = inst_array
     sync_session.add_all(instances)
     sync_session.commit()
 
     # Act: Get the first page
-    success, rows = sync_get_rows(session_inst=sync_session, model=MockModel)
+    success, rows = sync_get_rows(
+        session_inst=sync_session,
+        model=MockModel,
+        name__like=f"{unique_prefix}-%",
+    )
 
     # Assert: Check success and that some rows are returned
     assert success is True
@@ -401,7 +413,17 @@ def test_sync_get_rows_basic(sync_session: Session):
 def test_sync_get_rows_pagination(sync_session: Session):
     # Arrange: Create enough data for pagination
     batch_size = 25
+    unique_prefix = f"SyncPaginate-{MockModelFactory.build().id}"
     instances = MockModelFactory.build_batch(batch_size)
+    inst_array = []
+    for i, inst in enumerate(instances):
+        row = MockModel(
+            **inst.model_dump(exclude={"id", "name"}),
+            name=f"{unique_prefix}-{i}",
+        )
+        row.id = None
+        inst_array.append(row)
+    instances = inst_array
     sync_session.add_all(instances)
     sync_session.commit()
     for inst in instances:
@@ -421,6 +443,7 @@ def test_sync_get_rows_pagination(sync_session: Session):
         page_size=page_size,
         page=page,
         sort_field="id",
+        name__like=f"{unique_prefix}-%",
     )
 
     # Assert: Check success and compare IDs
@@ -500,12 +523,11 @@ def test_sync_get_rows_within_id_list_found(sync_session: Session):
 
     # Act: Get rows with the list of IDs
     with patch("sqlmodel_crud_utils.sync.getattr", side_effect=getattr):
-        success, results_proxy = sync_get_rows_within_id_list(
+        success, results = sync_get_rows_within_id_list(
             id_str_list=ids_to_find,
             session_inst=sync_session,
             model=MockModel,
         )
-        results = results_proxy.all()
 
     # Assert: Check success and that the correct rows were found
     assert success is True

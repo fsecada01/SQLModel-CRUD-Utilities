@@ -234,70 +234,182 @@ async def get_rows(
     :return:
     """
     # kwargs = {k: v for k, v in kwargs.items() if v}
+    # Inside get_rows (sync and async versions)
+
+    # ... existing code ...
     if stmnt is None:
         stmnt = select(model)
         if kwargs:
-            keys = list(kwargs.keys())
-            for key in keys:
-                if "__lte" in key:
-                    model_key = key.replace("__lte", "")
-                    val = kwargs.pop(key)
-                    if (
-                        "date" in key
-                        and isinstance(val, str)
-                        and is_date(val, fuzzy=False)
-                    ):
-                        val = date_parse(val)
-                    val = (
-                        int(val)
-                        if isinstance(val, str) and val.isdigit()
-                        else val
-                    )
-                    stmnt = stmnt.where(getattr(model, model_key) <= val)
+            # Separate special filter keys from exact match keys
+            exact_match_kwargs = {}
+            special_filters = {}
+
+            keys_to_process = list(kwargs.keys())  # Iterate over a copy
+
+            for key in keys_to_process:
+                val = kwargs[key]
+                if "__like" in key:
+                    model_key = key.replace("__like", "")
+                    special_filters[key] = (
+                        getattr(model, model_key).like,
+                        f"%{val}%",
+                    )  # Adapt for like
                 elif "__gte" in key:
                     model_key = key.replace("__gte", "")
-                    val = kwargs.pop(key)
-                    if (
-                        "date" in key
+                    parsed_val = (
+                        date_parse(val)
+                        if "date" in key
                         and isinstance(val, str)
                         and is_date(val, fuzzy=False)
-                    ):
-                        val = date_parse(val)
-                    val = (
-                        int(val)
-                        if isinstance(val, str) and val.isdigit()
-                        else val
+                        else (
+                            int(val)
+                            if isinstance(val, str) and val.isdigit()
+                            else val
+                        )
                     )
-                    stmnt = stmnt.where(getattr(model, model_key) >= val)
-            sort_desc, sort_field = (
-                kwargs.pop(x, None) for x in ("sort_desc", "sort_field")
-            )
-            if sort_field and sort_desc:
-                stmnt = stmnt.order_by(getattr(model, sort_field).desc())
-            elif sort_field:
-                stmnt = stmnt.order_by(getattr(model, sort_field))
-            else:
-                pass
-            if text_field:
-                search_val = kwargs.pop(text_field)
+                    special_filters[key] = (
+                        getattr(model, model_key).__ge__,
+                        parsed_val,
+                    )
+                elif "__lte" in key:
+                    model_key = key.replace("__lte", "")
+                    parsed_val = (
+                        date_parse(val)
+                        if "date" in key
+                        and isinstance(val, str)
+                        and is_date(val, fuzzy=False)
+                        else (
+                            int(val)
+                            if isinstance(val, str) and val.isdigit()
+                            else val
+                        )
+                    )
+                    special_filters[key] = (
+                        getattr(model, model_key).__le__,
+                        parsed_val,
+                    )
+                elif "__gt" in key:  # Add __gt if needed
+                    model_key = key.replace("__gt", "")
+                    parsed_val = (
+                        date_parse(val)
+                        if "date" in key
+                        and isinstance(val, str)
+                        and is_date(val, fuzzy=False)
+                        else (
+                            int(val)
+                            if isinstance(val, str) and val.isdigit()
+                            else val
+                        )
+                    )
+                    special_filters[key] = (
+                        getattr(model, model_key).__gt__,
+                        parsed_val,
+                    )
+                elif "__lt" in key:  # Add __lt if needed
+                    model_key = key.replace("__lt", "")
+                    parsed_val = (
+                        date_parse(val)
+                        if "date" in key
+                        and isinstance(val, str)
+                        and is_date(val, fuzzy=False)
+                        else (
+                            int(val)
+                            if isinstance(val, str) and val.isdigit()
+                            else val
+                        )
+                    )
+                    special_filters[key] = (
+                        getattr(model, model_key).__lt__,
+                        parsed_val,
+                    )
+                elif "__in" in key:  # Add __in if needed
+                    model_key = key.replace("__in", "")
+                    if isinstance(val, list):
+                        special_filters[key] = (
+                            getattr(model, model_key).in_,
+                            val,
+                        )
+                    else:
+                        logger.warning(
+                            f"Value for __in filter '{key}' is not a list, "
+                            f"skipping."
+                        )
+                elif key not in ("sort_desc", "sort_field") and (
+                    not text_field or key != text_field
+                ):
+                    # Collect keys for filter_by, excluding sort/text search
+                    # keys
+                    exact_match_kwargs[key] = val
+
+            # Apply special filters using filter()
+            for _filter_key, (
+                filter_method,
+                filter_value,
+            ) in special_filters.items():
+                stmnt = stmnt.filter(filter_method(filter_value))
+
+            # Apply sorting
+            sort_desc = kwargs.get("sort_desc")
+            sort_field = kwargs.get("sort_field")
+            if sort_field:
+                sort_attr = getattr(model, sort_field)
+                stmnt = stmnt.order_by(
+                    sort_attr.desc() if sort_desc else sort_attr
+                )
+
+            # Apply text search if applicable (assuming .match() is correct)
+            if text_field and text_field in kwargs:
+                search_val = kwargs[text_field]
                 stmnt = stmnt.where(
                     getattr(model, text_field).match(search_val)
                 )
-            stmnt = stmnt.filter_by(**kwargs)
+                # Remove from exact_match_kwargs if it ended up there
+                exact_match_kwargs.pop(text_field, None)
 
+            # Apply exact matches using filter_by()
+            if exact_match_kwargs:
+                stmnt = stmnt.filter_by(**exact_match_kwargs)
+
+        # Apply relationship loading options (Check if key is a relationship
+        # first - simplified check)
         if selectin and select_in_keys:
-            if isinstance(select_in_keys, list) is False:
-                select_in_keys = [select_in_keys]
             for key in select_in_keys:
-                stmnt = stmnt.options(selectinload(getattr(model, key)))
+                # Basic check: Does the attribute exist and is it likely a
+                # relationship?
+                # A more robust check might involve inspecting
+                # model.__sqlmodel_relationships__
+                attr = getattr(model, key, None)
+                if (
+                    attr is not None
+                    and hasattr(attr, "property")
+                    and hasattr(attr.property, "mapper")
+                ):
+                    stmnt = stmnt.options(selectinload(attr))
+                else:
+                    logger.warning(
+                        f"Skipping selectinload for non-relationship "
+                        f"attribute '{key}' on model {model.__name__}"
+                    )
 
         if lazy and lazy_load_keys:
-            if isinstance(lazy_load_keys, list) is False:
-                lazy_load_keys = [lazy_load_keys]
             for key in lazy_load_keys:
-                stmnt = stmnt.options(lazyload(getattr(model, key)))
+                attr = getattr(model, key, None)
+                if (
+                    attr is not None
+                    and hasattr(attr, "property")
+                    and hasattr(attr.property, "mapper")
+                ):
+                    stmnt = stmnt.options(lazyload(attr))
+                else:
+                    logger.warning(
+                        f"Skipping lazyload for non-relationship attribute "
+                        f"'{key}' on model {model.__name__}"
+                    )
 
-    stmnt = stmnt.offset(page - 1).limit(page_size)
+    # Apply pagination
+    stmnt = stmnt.offset((page - 1) * page_size).limit(
+        page_size
+    )  # Corrected offset calculation
     _result = await session_inst.exec(stmnt)
     results = _result.all()
     success = True if len(results) > 0 else False
@@ -394,7 +506,7 @@ async def bulk_upsert_mappings(
     await session_inst.execute(stmnt)
 
     results = await session_inst.scalars(
-        stmnt.returning(model), execution_options={"population_existing": True}
+        stmnt.returning(model), execution_options={"populate_existing": True}
     )
 
     await session_inst.commit()
