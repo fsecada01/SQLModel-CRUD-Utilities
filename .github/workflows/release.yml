@@ -6,6 +6,8 @@ on:
     branches:
       - 'release/*'
   # Trigger on Pull Requests targeting branches starting with 'release/'
+    tags:
+      - 'v*'
   pull_request:
     branches:
       - 'release/*'
