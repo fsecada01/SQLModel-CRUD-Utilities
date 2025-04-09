@@ -1,6 +1,4 @@
-"""
-
-"""
+""" """
 
 from typing import Type
 
@@ -252,7 +250,7 @@ def get_rows(
                         if isinstance(val, str) and val.isdigit()
                         else val
                     )
-                    stmnt = stmnt.where(getattr(model, model_key) < val)
+                    stmnt = stmnt.where(getattr(model, model_key) <= val)
                 elif "__gte" in key:
                     model_key = key.replace("__gte", "")
                     val = kwargs.pop(key)
@@ -267,7 +265,7 @@ def get_rows(
                         if isinstance(val, str) and val.isdigit()
                         else val
                     )
-                    stmnt = stmnt.where(getattr(model, model_key) > val)
+                    stmnt = stmnt.where(getattr(model, model_key) >= val)
             sort_desc, sort_field = (
                 kwargs.pop(x, None) for x in ("sort_desc", "sort_field")
             )
@@ -312,20 +310,24 @@ def get_rows_within_id_list(
     pk_field: str = "id",
 ):
     """
+    Retrieves rows from the database whose primary key is within the provided
+    list.
 
-    :param id_str_list:
-    :param session_inst:
-    :param model:
-    :param pk_field:
-    :return:
+    :param id_str_list: List of primary key values to fetch.
+    :param session_inst: SQLAlchemy Session instance.
+    :param model: SQLModel class representing the table.
+    :param pk_field: Name of the primary key field (default: "id").
+    :return: Tuple[bool, list[SQLModel]]: A tuple containing a success flag
+             (True if rows were found, False otherwise) and a list of the
+             found model instances.
     """
-    stmnt = select(model).where(getattr(model, pk_field).in_(id_str_list))
-    results = session_inst.exec(stmnt)
+    if not id_str_list:  # Handle empty input list
+        return False, []
 
-    if results:
-        success = True
-    else:
-        success = False
+    stmnt = select(model).where(getattr(model, pk_field).in_(id_str_list))
+    results = session_inst.exec(stmnt).all()  # Fetch all results into a list
+
+    success = len(results) > 0  # Success is true only if results were found
 
     return success, results
 

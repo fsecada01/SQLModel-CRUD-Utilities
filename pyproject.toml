@@ -56,10 +56,6 @@ line_length = 80
 #include_trailing_comma = true
 #force_grid_wrap = 0
 
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "sqlmodel_crud_utilities"
 version = "0.0.1b"
@@ -69,8 +65,8 @@ authors = [
 description = "A set of CRUD utilities to expedite operations with SQLModel"
 readme = "README.md"
 requires-python = ">=3.9"
+license = "MIT AND (Apache-2.0 OR BSD-2-Clause)"
 classifiers = [
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
@@ -93,9 +89,18 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "black>=24.10.0",
+    "aiosqlite>=0.21.0",
+    "black>=25.1.0",
     "build>=1.2.2.post1",
-    "isort>=5.13.2",
-    "pre-commit>=4.0.1",
-    "ruff>=0.9.1",
+    "factory-boy>=3.3.3",
+    "isort>=6.0.1",
+    "pre-commit>=4.2.0",
+    "pytest>=8.3.5",
+    "pytest-asyncio>=0.26.0",
+    "pytest-html>=4.1.1",
+    "pytest-json-report>=1.5.0",
+    "ruff>=0.11.4",
 ]
+
+[tool.setuptools]
+packages = ['sqlmodel_crud_utils']

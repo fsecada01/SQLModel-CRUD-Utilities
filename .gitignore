@@ -153,3 +153,7 @@ node_modules
 
 # ruff
 .ruff_cache
+
+# Other files
+*.html
+*.json

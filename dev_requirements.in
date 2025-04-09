@@ -1,7 +1,13 @@
 -c core_requirements.txt
 
+aiosqlite
 black
 build
+factory_boy
 isort
+pytest
+pytest-asyncio
+pytest-json-report
+pytest-html
 pre-commit
 ruff
