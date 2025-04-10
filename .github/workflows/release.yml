@@ -46,7 +46,12 @@ jobs:
       - name: Add uv to PATH
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
         shell: bash
-
+      - name: Create virtual environment
+        run: uv venv
+      - name: Activate virtual environment
+        run: |
+          echo "PATH=$PATH:$PWD/.venv/bin" >> $GITHUB_PATH
+          echo "VIRTUAL_ENV=$PWD/.venv" >> $GITHUB_ENV
       - name: Install dependencies with uv
         run: |
           # Install packages from requirements.txt and additional tools
