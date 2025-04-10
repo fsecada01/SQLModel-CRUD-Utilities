@@ -280,9 +280,8 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 <summary>Contributor Graph</summary>
 <br>
 <p align="left">
-   <!-- Replace YOUR_USERNAME -->
-   <a href="https://github.com/YOUR_USERNAME/sqlmodel-crud-utils/graphs/contributors">
-      <img src="https://contrib.rocks/image?repo=YOUR_USERNAME/sqlmodel-crud-utils">
+   <a href="https://github.com/fsecada01/sqlmodel-crud-utils/graphs/contributors">
+      <img src="https://contrib.rocks/image?repo=fsecada01/sqlmodel-crud-utils">
    </a>
 </p>
 </details>
