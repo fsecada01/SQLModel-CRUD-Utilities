@@ -4,8 +4,6 @@ Tests for the sync functions in `sqlmodel_crud_utils`
 
 from unittest.mock import MagicMock, call, patch
 
-from conftest import MockModelFactory, MockRelatedModelFactory
-from models import MockModel
 from sqlmodel import Session, select  # Keep Session for type hints
 
 from sqlmodel_crud_utils.sync import (
@@ -24,6 +22,9 @@ from sqlmodel_crud_utils.sync import (
 from sqlmodel_crud_utils.sync import insert_data_rows as sync_insert_data_rows
 from sqlmodel_crud_utils.sync import update_row as sync_update_row
 from sqlmodel_crud_utils.sync import write_row as sync_write_row
+
+from .conftest import MockModelFactory, MockRelatedModelFactory
+from .models import MockModel
 
 # --- Tests for get_result_from_query ---
 # (No changes needed - use real sessions)

@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, MagicMock  # Import AsyncMock
 import factory
 import pytest
 import pytest_asyncio
-from models import MockModel, MockRelatedModel
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -19,6 +18,8 @@ from sqlmodel import create_engine as create_sqlmodel_engine
 from sqlmodel.ext.asyncio.session import (
     AsyncSession as SQLModelAsyncSession,  # Import SQLModel AsyncSession
 )
+
+from .models import MockModel, MockRelatedModel
 
 # Define types if you haven't already, using the SQLModel versions
 SyncSessionType = SQLModelSession
