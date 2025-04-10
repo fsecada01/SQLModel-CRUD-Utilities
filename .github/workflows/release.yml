@@ -64,7 +64,7 @@ jobs:
         # primarily affects the main dependency installation step.
 
       - name: Run tests with coverage
-        run: pytest --cov=sqlmodel_crud_utils --cov-report=xml --cov-report=term # Generate XML and terminal reports
+        run: python -m pytest --cov=sqlmodel_crud_utils --cov-report=xml --cov-report=term # Generate XML and terminal reports
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
