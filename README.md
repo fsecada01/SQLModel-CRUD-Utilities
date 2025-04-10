@@ -291,7 +291,8 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 
 ##  License
 
-This project is protected under the **MIT License**. For more details, refer to the LICENSE file. *(Ensure a LICENSE file with the MIT text exists in your repository)*
+This project is protected under the **MIT License**. For more details, refer to
+the [LICENSE file](LICENSE).
 
 ---
 
