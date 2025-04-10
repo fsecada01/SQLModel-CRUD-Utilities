@@ -50,7 +50,9 @@ jobs:
       - name: Install dependencies with uv
         run: |
           # Install packages from requirements.txt and additional tools
-          uv pip install -r requirements.txt pytest pytest-cov pre-commit build twine
+          uv pip install -r core_requirements.txt
+          uv pip install -r dev_requirements.txt
+          build twine
 
       - name: Run pre-commit hooks
         uses: pre-commit/action@v3.0.1
