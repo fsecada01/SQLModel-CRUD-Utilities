@@ -33,6 +33,8 @@ jobs:
       # ADJUST THIS: build your documentation into docs/.
       # We use a custom build script for pdoc itself, ideally you just run `pdoc -o docs/ ...` here.
       - run: uv run docs/make.py
+        env:
+          SQL_DIALECT: sqlite
       - uses: actions/configure-pages@v4
 
 
