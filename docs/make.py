@@ -21,7 +21,7 @@ try:
             sys.executable,  # Use the current Python interpreter
             "-m",
             "pdoc",
-            "--html",
+            # "--html",
             "-o",
             str(output_dir),
             package_name,
