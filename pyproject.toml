@@ -58,7 +58,7 @@ line_length = 80
 
 [project]
 name = "sqlmodel_crud_utilities"
-version = "0.0.1b"
+version = "0.1.0"
 authors = [
     { name="Francis Secada", email = "francis.secada@gmail.com" }
 ]
@@ -71,20 +71,10 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "annotated-types==0.7.0",
-    "colorama==0.4.6",
-    "greenlet==3.1.1",
-    "loguru==0.7.3",
-    "pydantic-core==2.33.1",
-    "pydantic==2.11.3",
-    "python-dateutil==2.9.0.post0",
-    "python-dotenv==1.1.0",
-    "six==1.17.0",
-    "sqlalchemy==2.0.40",
-    "sqlmodel==0.0.24",
-    "typing-extensions==4.13.1",
-    "typing-inspection==0.4.0",
-    "win32-setctime==1.2.0",
+    "loguru>=0.7.3",
+    "python-dateutil>=2.9.0.post0",
+    "python-dotenv>=1.1.0",
+    "sqlmodel>=0.0.24",
 ]
 
 [dependency-groups]
@@ -97,14 +87,12 @@ dev = [
     "pre-commit>=4.2.0",
     "pytest>=8.3.5",
     "pytest-asyncio>=0.26.0",
+    "pytest-cov>=6.1.1",
     "pytest-html>=4.1.1",
     "pytest-json-report>=1.5.0",
-    "ruff>=0.11.4",
-    "pytest-cov>=6.1.1",
+    "ruff>=0.11.10",
 ]
-doc = [
-    "pdoc>=15.0.1",
-]
+
 
 [tool.setuptools]
 packages = ['sqlmodel_crud_utils']
