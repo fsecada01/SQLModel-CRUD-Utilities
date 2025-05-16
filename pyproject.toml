@@ -70,16 +70,19 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
-[project.urls]
-"Homepage" = "https://fsecada01.github.io/SQLModel-CRUD-Utilities/sqlmodel_crud_utils.html"
-"Repository" = "https://github.com/fsecada01/sqlmodel_crud_utils"
-"Bug Tracker" = "https://github.com/fsecada01/sqlmodel_crud_utils/issues"
-
 dependencies = [
     "loguru>=0.7.3",
     "python-dateutil>=2.9.0.post0",
     "python-dotenv>=1.1.0",
     "sqlmodel>=0.0.24",
+]
+[project.urls]
+"Homepage" = "https://fsecada01.github.io/SQLModel-CRUD-Utilities/sqlmodel_crud_utils.html"
+"Repository" = "https://github.com/fsecada01/sqlmodel_crud_utils"
+"Bug Tracker" = "https://github.com/fsecada01/sqlmodel_crud_utils/issues"
+
+doc = [
+    "pdoc>=15.0.1",
 ]
 
 [dependency-groups]
@@ -96,10 +99,6 @@ dev = [
     "pytest-html>=4.1.1",
     "pytest-json-report>=1.5.0",
     "ruff>=0.11.10",
-]
-
-doc = [
-    "pdoc>=15.0.1",
 ]
 [tool.setuptools]
 packages = ['sqlmodel_crud_utils']
