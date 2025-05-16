@@ -93,6 +93,8 @@ dev = [
     "ruff>=0.11.10",
 ]
 
-
+doc = [
+    "pdoc>=15.0.1",
+]
 [tool.setuptools]
 packages = ['sqlmodel_crud_utils']
