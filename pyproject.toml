@@ -81,9 +81,6 @@ dependencies = [
 "Repository" = "https://github.com/fsecada01/sqlmodel_crud_utils"
 "Bug Tracker" = "https://github.com/fsecada01/sqlmodel_crud_utils/issues"
 
-doc = [
-    "pdoc>=15.0.1",
-]
 
 [dependency-groups]
 dev = [
@@ -100,5 +97,11 @@ dev = [
     "pytest-json-report>=1.5.0",
     "ruff>=0.11.10",
 ]
+
+
+doc = [
+    "pdoc>=15.0.1",
+]
+
 [tool.setuptools]
 packages = ['sqlmodel_crud_utils']
