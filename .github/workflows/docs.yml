@@ -28,7 +28,7 @@ jobs:
         uses: astral-sh/setup-uv@v5
       # ADJUST THIS: install all dependencies (including pdoc)
       - run: |
-          uv sync
+          uv pip install core_requirements.in
           uv sync --group doc
       # ADJUST THIS: build your documentation into docs/.
       # We use a custom build script for pdoc itself, ideally you just run `pdoc -o docs/ ...` here.
