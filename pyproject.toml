@@ -71,11 +71,13 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "loguru>=0.7.3",
     "python-dateutil>=2.9.0.post0",
     "python-dotenv>=1.1.0",
     "sqlmodel>=0.0.24",
 ]
+
+[project.optional-dependencies]
+loguru = ["loguru>=0.7.3"]
 [project.urls]
 "Homepage" = "https://fsecada01.github.io/SQLModel-CRUD-Utilities/sqlmodel_crud_utils.html"
 "Repository" = "https://github.com/fsecada01/sqlmodel_crud_utils"

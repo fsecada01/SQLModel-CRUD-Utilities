@@ -4,20 +4,23 @@ from typing import Type
 
 from dateutil.parser import parse as date_parse
 from dotenv import load_dotenv
-from loguru import logger
 from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.orm import lazyload, selectinload
 from sqlmodel import Session, SQLModel, select
 from sqlmodel.sql.expression import SelectOfScalar
 
-from sqlmodel_crud_utils.utils import get_sql_dialect_import, get_val, is_date
+from sqlmodel_crud_utils.utils import (
+    get_sql_dialect_import,
+    get_val,
+    is_date,
+    logger,
+)
 
 load_dotenv()  # take environment variables from .env.
 
 upsert = get_sql_dialect_import(dialect=get_val("SQL_DIALECT"))
 
 
-@logger.catch
 def get_result_from_query(query: SelectOfScalar, session: Session):
     """
     Processes an SQLModel query object and returns a singular result from the
@@ -39,7 +42,6 @@ def get_result_from_query(query: SelectOfScalar, session: Session):
     return results
 
 
-@logger.catch
 def get_one_or_create(
     session_inst: Session,
     model: type[SQLModel],
@@ -89,7 +91,6 @@ def get_one_or_create(
         return created, False
 
 
-@logger.catch
 def write_row(data_row: Type[SQLModel], session_inst: Session):
     """
     Writes a new instance of an SQLModel ORM model to the database, with an
@@ -114,7 +115,6 @@ def write_row(data_row: Type[SQLModel], session_inst: Session):
         return False, None
 
 
-@logger.catch
 def insert_data_rows(data_rows, session_inst: Session):
     """
 
@@ -154,7 +154,6 @@ def insert_data_rows(data_rows, session_inst: Session):
         return status, {"success": processed_rows, "failed": failed_rows}
 
 
-@logger.catch
 def get_row(
     id_str: str or int,
     session_inst: Session,
@@ -201,7 +200,6 @@ def get_row(
     return success, row
 
 
-@logger.catch
 def get_rows(
     session_inst: Session,
     model: type[SQLModel],
@@ -414,7 +412,6 @@ def get_rows(
     return success, results
 
 
-@logger.catch
 def get_rows_within_id_list(
     id_str_list: list[str | int],
     session_inst: Session,
@@ -444,7 +441,6 @@ def get_rows_within_id_list(
     return success, results
 
 
-@logger.catch
 def delete_row(
     id_str: str or int,
     session_inst: Session,
@@ -482,7 +478,6 @@ def delete_row(
     return success
 
 
-@logger.catch
 def bulk_upsert_mappings(
     payload: list,
     session_inst: Session,
@@ -515,7 +510,6 @@ def bulk_upsert_mappings(
     return True, results.all()
 
 
-@logger.catch
 def update_row(
     id_str: int | str,
     data: dict,
