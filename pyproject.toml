@@ -105,5 +105,9 @@ doc = [
     "pdoc>=15.0.1",
 ]
 
+doc = [
+    "pdoc>=15.0.1",
+]
+
 [tool.setuptools]
 packages = ['sqlmodel_crud_utils']
