@@ -1,7 +1,13 @@
 import importlib
+import logging
 import os
 
 from dateutil.parser import parse as date_parse
+
+try:
+    from loguru import logger
+except ImportError:
+    logger = logging.getLogger("sqlmodel_crud_utils")
 
 
 def get_val(val: str):
