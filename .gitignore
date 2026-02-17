@@ -154,6 +154,8 @@ node_modules
 # ruff
 .ruff_cache
 
-# Other files
+# Other files (but allow docs/)
 *.html
+!docs/*.html
 *.json
+!docs/*.json
