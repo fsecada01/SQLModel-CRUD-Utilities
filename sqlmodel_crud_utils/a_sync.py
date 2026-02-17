@@ -1,7 +1,5 @@
 """ """
 
-from typing import Type
-
 from dateutil.parser import parse as date_parse
 from dotenv import load_dotenv
 from sqlalchemy.exc import MultipleResultsFound
@@ -46,7 +44,7 @@ async def get_result_from_query(query: SelectOfScalar, session: AsyncSession):
 async def get_one_or_create(
     session_inst: AsyncSession,
     model: type[SQLModel],
-    create_method_kwargs: dict = None,
+    create_method_kwargs: dict | None = None,
     selectin: bool = False,
     select_in_key: str | None = None,
     **kwargs,
@@ -92,12 +90,12 @@ async def get_one_or_create(
         return created, False
 
 
-async def write_row(data_row: Type[SQLModel], session_inst: AsyncSession):
+async def write_row(data_row: SQLModel, session_inst: AsyncSession):
     """
     Writes a new instance of an SQLModel ORM model to the database, with an
     exception catch that rolls back the session in the event of failure.
 
-    :param data_row: Type[SQLModel]
+    :param data_row: SQLModel
     :param session_inst: AsyncSession
     :return: Tuple[bool, ScalarResult]
     """
@@ -158,7 +156,7 @@ async def insert_data_rows(data_rows, session_inst: AsyncSession):
 
 
 async def get_row(
-    id_str: str or int,
+    id_str: str | int,
     session_inst: AsyncSession,
     model: type[SQLModel],
     selectin: bool = False,
@@ -441,7 +439,7 @@ async def get_rows_within_id_list(
 
 
 async def delete_row(
-    id_str: str or int,
+    id_str: str | int,
     session_inst: AsyncSession,
     model: type[SQLModel],
     pk_field: str = "id",
@@ -498,7 +496,7 @@ async def bulk_upsert_mappings(
         index_elements=[getattr(model, x) for x in pk_fields],
         set_={k: getattr(stmnt.excluded, k) for k in payload[0].keys()},
     )
-    await session_inst.execute(stmnt)
+    await session_inst.exec(stmnt)
 
     results = await session_inst.scalars(
         stmnt.returning(model), execution_options={"populate_existing": True}

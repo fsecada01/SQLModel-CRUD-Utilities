@@ -220,7 +220,7 @@ def test_sync_insert_data_rows_success(sync_session: Session):
 
     # Assert: Verify they exist in the DB
     ids = [row.id for row in result]
-    statement = select(MockModel).where(MockModel.id.in_(ids))
+    statement = select(MockModel).where(MockModel.id.in_(ids))  # type: ignore[union-attr]
     fetched_rows = sync_session.exec(statement).all()
     assert len(fetched_rows) == len(data_rows)
     names_after = {row.name for row in fetched_rows}

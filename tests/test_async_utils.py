@@ -275,7 +275,7 @@ async def test_async_insert_data_rows_success(async_session: AsyncSession):
 
     # Assert: Verify they exist in the DB
     ids = [row.id for row in result]
-    statement = select(MockModel).where(MockModel.id.in_(ids))
+    statement = select(MockModel).where(MockModel.id.in_(ids))  # type: ignore[union-attr]
     # FIX: Remove redundant .scalars()
     fetched_rows_result = await async_session.exec(statement)
     fetched_rows = fetched_rows_result.all()
