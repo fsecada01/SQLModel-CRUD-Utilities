@@ -6,18 +6,14 @@ import factory
 import pytest
 import pytest_asyncio
 from sqlalchemy import Engine, create_engine
-from sqlalchemy.ext.asyncio import (
-    AsyncEngine,
-    async_sessionmaker,
-    create_async_engine,
-)
+from sqlalchemy.ext.asyncio import (AsyncEngine, async_sessionmaker,
+                                    create_async_engine)
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import Session as SQLModelSession  # Import SQLModel Session
 from sqlmodel import SQLModel
 from sqlmodel import create_engine as create_sqlmodel_engine
-from sqlmodel.ext.asyncio.session import (
-    AsyncSession as SQLModelAsyncSession,  # Import SQLModel AsyncSession
-)
+from sqlmodel.ext.asyncio.session import \
+    AsyncSession as SQLModelAsyncSession  # Import SQLModel AsyncSession
 
 from .models import MockModel, MockRelatedModel
 
