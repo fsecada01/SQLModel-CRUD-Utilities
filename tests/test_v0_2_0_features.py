@@ -129,7 +129,9 @@ class TestExceptions:
     def test_multiple_records_error_with_filters(self):
         """Test MultipleRecordsError with filters."""
         filters = {"email": "test@example.com", "active": True}
-        exc = MultipleRecordsError(model=AuditTestModel, count=3, filters=filters)
+        exc = MultipleRecordsError(
+            model=AuditTestModel, count=3, filters=filters
+        )
 
         assert exc.filters == filters
         assert "filters:" in str(exc)
@@ -722,7 +724,11 @@ class TestSoftDeleteMixin:
 
         assert model.is_deleted is True
         assert model.deleted_by == "user2"
-        assert second_deleted_at is not None and first_deleted_at is not None and second_deleted_at >= first_deleted_at
+        assert (
+            second_deleted_at is not None
+            and first_deleted_at is not None
+            and second_deleted_at >= first_deleted_at
+        )
 
 
 # ============================================================================

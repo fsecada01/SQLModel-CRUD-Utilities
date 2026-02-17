@@ -23,7 +23,8 @@ class AuditMixin:
 
     Attributes:
         created_at: Timestamp when the record was created (auto-set)
-        updated_at: Timestamp when the record was last updated (auto-set on update)
+        updated_at: Timestamp when the record was last updated
+            (auto-set on update)
         created_by: Optional username/ID of creator
         updated_by: Optional username/ID of last updater
 
@@ -158,11 +159,13 @@ class SoftDeleteMixin:
     def soft_delete(self, user: Optional[str] = None) -> None:
         """Mark this record as deleted.
 
-        Sets the is_deleted flag to True, records the deletion timestamp,
-        and optionally tracks which user performed the deletion.
+        Sets the is_deleted flag to True, records the deletion
+        timestamp, and optionally tracks which user performed the
+        deletion.
 
         Args:
-            user: Optional username or user ID of the person performing the deletion
+            user: Optional username or user ID of the person
+                performing the deletion
 
         Example:
             >>> product.soft_delete(user="admin")

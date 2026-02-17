@@ -119,7 +119,8 @@ class MultipleRecordsError(SQLModelCRUDError):
         ...     count=3,
         ...     filters={"email": "test@example.com"}
         ... )
-        MultipleRecordsError: Expected 1 User, found 3 (filters: {'email': 'test@example.com'})
+        MultipleRecordsError: Expected 1 User, found 3
+            (filters: {'email': 'test@example.com'})
     """
 
     def __init__(
@@ -174,7 +175,8 @@ class ValidationError(SQLModelCRUDError):
         ...     value=-5,
         ...     message="Age must be a positive integer"
         ... )
-        ValidationError: Validation failed for field 'age': Age must be a positive integer (value: -5)
+        ValidationError: Validation failed for field 'age':
+            Age must be a positive integer (value: -5)
 
         Multiple field errors:
         >>> raise ValidationError(
@@ -324,8 +326,10 @@ class TransactionError(SQLModelCRUDError):
     - Connection issues during transaction
 
     Attributes:
-        operation: The transaction operation that failed (e.g., "commit", "rollback").
-        original_error: The underlying exception that caused the failure.
+        operation: The transaction operation that failed
+            (e.g., "commit", "rollback").
+        original_error: The underlying exception that caused the
+            failure.
 
     Example:
         >>> try:
@@ -335,7 +339,8 @@ class TransactionError(SQLModelCRUDError):
         ...         operation="commit",
         ...         original_error=e
         ...     )
-        TransactionError: Transaction operation 'commit' failed: IntegrityError(...)
+        TransactionError: Transaction operation 'commit' failed:
+            IntegrityError(...)
     """
 
     def __init__(
@@ -471,11 +476,16 @@ class QueryExecutionError(SQLModelCRUDError):
             full_message = message
         elif query and original_error:
             full_message = (
-                f"Query execution failed: {type(original_error).__name__}({original_error})\n"
-                f"Query: {query[:200]}{'...' if len(query) > 200 else ''}"
+                f"Query execution failed: "
+                f"{type(original_error).__name__}({original_error})\n"
+                f"Query: {query[:200]}"
+                f"{'...' if len(query) > 200 else ''}"
             )
         elif query:
-            full_message = f"Query execution failed: {query[:200]}{'...' if len(query) > 200 else ''}"
+            full_message = (
+                f"Query execution failed: {query[:200]}"
+                f"{'...' if len(query) > 200 else ''}"
+            )
         elif original_error:
             full_message = f"Query execution failed: {original_error}"
         else:
@@ -546,7 +556,9 @@ def validation_error(
         A configured ValidationError instance.
 
     Example:
-        >>> raise validation_error("Invalid email", field="email", value="not-an-email")
+        >>> raise validation_error(
+        ...     "Invalid email", field="email", value="not-an-email"
+        ... )
     """
     return ValidationError(
         message=message, field=field, value=value, errors=errors

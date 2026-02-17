@@ -18,9 +18,10 @@ from .exceptions import TransactionError
 def transaction(session: Session) -> Generator[Session, None, None]:
     """Context manager for synchronous database transactions.
 
-    Automatically commits the transaction on successful completion or rolls back
-    on any exception. The original exception is wrapped in a TransactionError
-    to provide additional context while preserving the exception chain.
+    Automatically commits the transaction on successful completion or
+    rolls back on any exception. The original exception is wrapped in a
+    TransactionError to provide additional context while preserving the
+    exception chain.
 
     Args:
         session: An active SQLModel Session instance
@@ -29,8 +30,9 @@ def transaction(session: Session) -> Generator[Session, None, None]:
         Session: The same session instance for use within the context
 
     Raises:
-        TransactionError: Wraps any exception that occurs during the transaction,
-            with the original exception available via __cause__
+        TransactionError: Wraps any exception that occurs during
+            the transaction, with the original exception available
+            via __cause__
 
     Example:
         Basic usage with automatic commit:
@@ -43,7 +45,9 @@ def transaction(session: Session) -> Generator[Session, None, None]:
         >>> with Session(engine) as session:
         ...     with transaction(session) as tx:
         ...         user = write_row(User(name="Alice"), tx)
-        ...         update_row(user.id, {"email": "alice@example.com"}, User, tx)
+        ...         update_row(
+        ...             user.id, {"email": "alice@example.com"}, User, tx
+        ...         )
         ...         # Automatically commits here if no exceptions
 
         Error handling with automatic rollback:
@@ -93,18 +97,22 @@ async def a_transaction(
 ) -> AsyncGenerator[AsyncSession, None]:
     """Context manager for asynchronous database transactions.
 
-    Asynchronous version of the transaction() context manager. Provides the same
-    automatic commit/rollback behavior for async database operations.
+    Asynchronous version of the transaction() context manager. Provides
+    the same automatic commit/rollback behavior for async database
+    operations.
 
     Args:
-        session: An active AsyncSession instance from sqlmodel.ext.asyncio.session
+        session: An active AsyncSession instance from
+            sqlmodel.ext.asyncio.session
 
     Yields:
-        AsyncSession: The same session instance for use within the async context
+        AsyncSession: The same session instance for use within the
+            async context
 
     Raises:
-        TransactionError: Wraps any exception that occurs during the transaction,
-            with the original exception available via __cause__
+        TransactionError: Wraps any exception that occurs during
+            the transaction, with the original exception available
+            via __cause__
 
     Example:
         Basic async usage with automatic commit:
@@ -117,8 +125,13 @@ async def a_transaction(
         >>> engine = create_async_engine("sqlite+aiosqlite:///database.db")
         >>> async with AsyncSession(engine) as session:
         ...     async with a_transaction(session) as tx:
-        ...         user = await a_write_row(User(name="Alice"), tx)
-        ...         await a_update_row(user.id, {"email": "alice@example.com"}, User, tx)
+        ...         user = await a_write_row(
+        ...             User(name="Alice"), tx
+        ...         )
+        ...         await a_update_row(
+        ...             user.id, {"email": "alice@example.com"},
+        ...             User, tx
+        ...         )
         ...         # Automatically commits here if no exceptions
 
         Error handling with automatic rollback:
