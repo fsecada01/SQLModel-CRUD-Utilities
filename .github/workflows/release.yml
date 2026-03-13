@@ -82,7 +82,7 @@ jobs:
     name: Build Package
     needs: lint_test # Depends on successful linting and testing
     # Only run this job on direct pushes to release/* branches, not on PRs
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')
+    if: github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -114,8 +114,8 @@ jobs:
   create_release:
     name: Create GitHub Release
     needs: build # Depends on successful build
-    # Only run this job on direct pushes to release/* branches
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')
+    # Only run this job on direct pushes to release/* branches or version tags
+    if: github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     permissions:
       contents: write # Required to create releases and tags
@@ -129,11 +129,14 @@ jobs:
           name: python-package-distributions
           path: dist
 
-      - name: Extract version from branch name
+      - name: Extract version from ref
         id: get_version
-        # Assumes branch name is like 'release/v1.2.3'
-        # Extracts 'v1.2.3' as the tag name
-        run: echo "TAG_NAME=${GITHUB_REF#refs/heads/release/}" >> $GITHUB_OUTPUT
+        # Works for both 'refs/heads/release/v1.2.3' and 'refs/tags/v1.2.3'
+        run: |
+          REF="${GITHUB_REF}"
+          TAG="${REF#refs/heads/release/}"
+          TAG="${TAG#refs/tags/}"
+          echo "TAG_NAME=${TAG}" >> $GITHUB_OUTPUT
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -154,8 +157,8 @@ jobs:
   publish_pypi:
     name: Publish to PyPI
     needs: create_release # Depends on successful release creation
-    # Only run this job on direct pushes to release/* branches
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')
+    # Only run this job on direct pushes to release/* branches or version tags
+    if: github.event_name == 'push' && (startsWith(github.ref, 'refs/heads/release/') || startsWith(github.ref, 'refs/tags/'))
     runs-on: ubuntu-latest
     environment: # Optional: Define environment for PyPI publishing rules/secrets
       name: pypi
