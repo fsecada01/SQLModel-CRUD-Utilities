@@ -5,36 +5,29 @@ Tests for the async functions in `sqlmodel_crud_utils`
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
-from sqlmodel import (  # Import Relationship if needed for model definition
-    select,
-)
+from sqlmodel import \
+    select  # Import Relationship if needed for model definition
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from sqlmodel_crud_utils.a_sync import (
-    bulk_upsert_mappings as async_bulk_upsert_mappings,
-)
+from sqlmodel_crud_utils.a_sync import \
+    bulk_upsert_mappings as async_bulk_upsert_mappings
 from sqlmodel_crud_utils.a_sync import delete_row as async_delete_row
-from sqlmodel_crud_utils.a_sync import (
-    get_one_or_create as async_get_one_or_create,
-)
-from sqlmodel_crud_utils.a_sync import (
-    get_result_from_query as async_get_result_from_query,
-)
+from sqlmodel_crud_utils.a_sync import \
+    get_one_or_create as async_get_one_or_create
+from sqlmodel_crud_utils.a_sync import \
+    get_result_from_query as async_get_result_from_query
 from sqlmodel_crud_utils.a_sync import get_row as async_get_row
 from sqlmodel_crud_utils.a_sync import get_rows as async_get_rows
-from sqlmodel_crud_utils.a_sync import (
-    get_rows_within_id_list as async_get_rows_within_id_list,
-)
-from sqlmodel_crud_utils.a_sync import (
-    insert_data_rows as async_insert_data_rows,
-)
+from sqlmodel_crud_utils.a_sync import \
+    get_rows_within_id_list as async_get_rows_within_id_list
+from sqlmodel_crud_utils.a_sync import \
+    insert_data_rows as async_insert_data_rows
 from sqlmodel_crud_utils.a_sync import update_row as async_update_row
 from sqlmodel_crud_utils.a_sync import write_row as async_write_row
 
 from .conftest import MockModelFactory, MockRelatedModelFactory
-from .models import (  # Assuming MockRelatedModel is needed for relationship
-    MockModel,
-)
+from .models import \
+    MockModel  # Assuming MockRelatedModel is needed for relationship
 
 # --- Tests for get_result_from_query ---
 # (No changes needed for these tests - they use real sessions)

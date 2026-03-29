@@ -8,12 +8,8 @@ from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.sql.expression import SelectOfScalar
 
-from sqlmodel_crud_utils.utils import (
-    get_sql_dialect_import,
-    get_val,
-    is_date,
-    logger,
-)
+from sqlmodel_crud_utils.utils import (get_sql_dialect_import, get_val,
+                                       is_date, logger)
 
 load_dotenv()  # take environment variables from .env.
 

@@ -6,19 +6,17 @@ from unittest.mock import MagicMock, call, patch
 
 from sqlmodel import Session, select  # Keep Session for type hints
 
-from sqlmodel_crud_utils.sync import (
-    bulk_upsert_mappings as sync_bulk_upsert_mappings,
-)
+from sqlmodel_crud_utils.sync import \
+    bulk_upsert_mappings as sync_bulk_upsert_mappings
 from sqlmodel_crud_utils.sync import delete_row as sync_delete_row
-from sqlmodel_crud_utils.sync import get_one_or_create as sync_get_one_or_create
-from sqlmodel_crud_utils.sync import (
-    get_result_from_query as sync_get_result_from_query,
-)
+from sqlmodel_crud_utils.sync import \
+    get_one_or_create as sync_get_one_or_create
+from sqlmodel_crud_utils.sync import \
+    get_result_from_query as sync_get_result_from_query
 from sqlmodel_crud_utils.sync import get_row as sync_get_row
 from sqlmodel_crud_utils.sync import get_rows as sync_get_rows
-from sqlmodel_crud_utils.sync import (
-    get_rows_within_id_list as sync_get_rows_within_id_list,
-)
+from sqlmodel_crud_utils.sync import \
+    get_rows_within_id_list as sync_get_rows_within_id_list
 from sqlmodel_crud_utils.sync import insert_data_rows as sync_insert_data_rows
 from sqlmodel_crud_utils.sync import update_row as sync_update_row
 from sqlmodel_crud_utils.sync import write_row as sync_write_row
