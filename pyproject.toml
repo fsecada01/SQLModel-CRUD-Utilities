@@ -58,7 +58,7 @@ line_length = 80
 
 [project]
 name = "sqlmodel_crud_utilities"
-version = "0.2.0"
+version = "0.2.1"
 authors = [
     { name="Francis Secada", email = "francis.secada@gmail.com" }
 ]
@@ -80,8 +80,8 @@ dependencies = [
 loguru = ["loguru>=0.7.3"]
 [project.urls]
 "Homepage" = "https://fsecada01.github.io/SQLModel-CRUD-Utilities/sqlmodel_crud_utils.html"
-"Repository" = "https://github.com/fsecada01/sqlmodel_crud_utils"
-"Bug Tracker" = "https://github.com/fsecada01/sqlmodel_crud_utils/issues"
+"Repository" = "https://github.com/fsecada01/SQLModel-CRUD-Utilities"
+"Bug Tracker" = "https://github.com/fsecada01/SQLModel-CRUD-Utilities/issues"
 
 
 [dependency-groups]
