@@ -7,12 +7,55 @@ functionality like audit trails and soft delete support.
 from datetime import datetime, timezone
 from typing import Optional
 
+from sqlalchemy import Column, DateTime, func
+from sqlalchemy.orm import declared_attr
 from sqlmodel import Field
 
 
 def _utc_now() -> datetime:
     """Get current UTC time as timezone-aware datetime."""
     return datetime.now(timezone.utc)
+
+
+class TimestampMixin:
+    """Lightweight mixin adding only ``created_at`` and ``updated_at``.
+
+    Use this instead of ``AuditMixin`` when there is no user context to
+    record. Each column is produced by ``declared_attr``, so SQLAlchemy
+    builds a fresh ``Column`` for every concrete ``table=True`` model and
+    the mixin can safely be applied to any number of models.
+
+    Both columns use ``server_default=func.now()``, so the database fills
+    them even for inserts that bypass Python-side defaults, such as
+    ``bulk_insert_mappings`` or raw ``INSERT`` statements. ``updated_at``
+    additionally refreshes through ``onupdate=func.now()`` on ORM updates.
+
+    The ``declared_attr`` methods intentionally carry no return
+    annotations: SQLAlchemy's annotated-declarative scanner would treat
+    them as bare field annotations and raise ``MappedAnnotationError``.
+
+    Example:
+        >>> class Location(TimestampMixin, SQLModel, table=True):
+        ...     id: Optional[int] = Field(default=None, primary_key=True)
+        ...     name: str
+    """
+
+    @declared_attr
+    def created_at(cls):
+        return Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            nullable=False,
+        )
+
+    @declared_attr
+    def updated_at(cls):
+        return Column(
+            DateTime(timezone=True),
+            server_default=func.now(),
+            onupdate=func.now(),
+            nullable=False,
+        )
 
 
 class AuditMixin:
