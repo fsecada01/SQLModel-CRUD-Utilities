@@ -43,7 +43,11 @@ from sqlmodel_crud_utils.exceptions import (
 )
 
 # Import mixins
-from sqlmodel_crud_utils.mixins import AuditMixin, SoftDeleteMixin
+from sqlmodel_crud_utils.mixins import (
+    AuditMixin,
+    SoftDeleteMixin,
+    TimestampMixin,
+)
 
 # Import synchronous functions
 from sqlmodel_crud_utils.sync import (
@@ -100,4 +104,5 @@ __all__ = [
     # Mixins
     "AuditMixin",
     "SoftDeleteMixin",
+    "TimestampMixin",
 ]
