@@ -8,10 +8,13 @@ from sqlmodel import Session, SQLModel, delete, select, update
 from sqlmodel.sql.expression import SelectOfScalar
 
 from sqlmodel_crud_utils.utils import (
+    chunked,
     get_sql_dialect_import,
     get_val,
     is_date,
     logger,
+    validate_primary_key_field,
+    validate_update_columns,
 )
 
 load_dotenv()  # take environment variables from .env.
@@ -444,35 +447,44 @@ def delete_rows_within_id_list(
     session_inst: Session,
     model: type[SQLModel],
     pk_field: str = "id",
-):
+    chunk_size: int = 500,
+) -> tuple[bool, int]:
     """
-    Deletes every row whose primary key is within the provided list using a
-    single DELETE statement and commits. IDs with no matching row are ignored.
-    On any database error the transaction is rolled back.
+    Deletes every row whose primary key is within the provided list and
+    commits once. IDs with no matching row are ignored.
+
+    This is a hard SQL ``DELETE``: it bypasses ``SoftDeleteMixin`` (rows are
+    removed, not marked with ``deleted_at``) and any ORM-level hooks. The ID
+    list is split into ``chunk_size`` batches to stay under backend
+    bind-parameter limits; all batches share one transaction, so the call is
+    all-or-nothing.
 
     :param id_str_list: List of primary key values to delete.
     :param session_inst: SQLAlchemy Session instance.
     :param model: SQLModel class representing the table.
-    :param pk_field: Name of the primary key field (default: "id").
-    :return: Tuple[bool, int]: Success flag (True only if at least one row
-             was deleted) and the number of rows deleted.
+    :param pk_field: Primary-key column to match against (default: "id").
+    :param chunk_size: Maximum IDs per DELETE statement (default: 500).
+    :return: Tuple[bool, int]: ``True`` and the number of rows deleted. The
+        count is 0 when nothing matched or the list was empty.
+    :raises ValueError: If ``pk_field`` is not a primary-key column of
+        ``model`` or ``chunk_size`` is not positive.
+    :raises Exception: Any database error, after the transaction has been
+        rolled back and the error logged.
     """
-    if not id_str_list:
-        return False, 0
-
+    validate_primary_key_field(model, pk_field)
+    deleted = 0
     try:
-        stmnt = delete(model).where(getattr(model, pk_field).in_(id_str_list))
-        result = session_inst.exec(stmnt)
-        rowcount = result.rowcount
+        for chunk in chunked(id_str_list, chunk_size):
+            stmnt = delete(model).where(getattr(model, pk_field).in_(chunk))
+            result = session_inst.exec(stmnt)
+            deleted += max(result.rowcount, 0)
         session_inst.commit()
     except Exception as e:
         session_inst.rollback()
-        logger.error(
-            f"Failed to bulk delete rows. Please see error messages here: {e}"
-        )
-        return False, 0
+        logger.error(f"Failed to bulk delete rows: {type(e)}, {e}")
+        raise
 
-    return rowcount > 0, rowcount
+    return True, deleted
 
 
 def bulk_update_rows(
@@ -481,41 +493,52 @@ def bulk_update_rows(
     session_inst: Session,
     model: type[SQLModel],
     pk_field: str = "id",
-):
+    chunk_size: int = 500,
+) -> tuple[bool, int]:
     """
     Applies the same column values to every row whose primary key is within
-    the provided list using a single UPDATE statement and commits. IDs with no
-    matching row are ignored. On any database error the transaction is rolled
-    back.
+    the provided list and commits once. IDs with no matching row are ignored.
+
+    This is a Core ``UPDATE``: ORM-level hooks and Python-side defaults do
+    not run, so ``AuditMixin.updated_at``/``updated_by`` are not refreshed
+    unless the caller includes them in ``data`` (column-level ``onupdate``
+    defaults, such as ``TimestampMixin.updated_at``, do fire). The ID list is
+    split into ``chunk_size`` batches; all batches share one transaction.
 
     :param id_str_list: List of primary key values to update.
-    :param data: Mapping of column name to the new value for every row.
+    :param data: Mapping of column name to the new value for every row. Must
+        be non-empty and may not name a primary-key column.
     :param session_inst: SQLAlchemy Session instance.
     :param model: SQLModel class representing the table.
-    :param pk_field: Name of the primary key field (default: "id").
-    :return: Tuple[bool, int]: Success flag (True only if at least one row
-             was updated) and the number of rows updated.
+    :param pk_field: Primary-key column to match against (default: "id").
+    :param chunk_size: Maximum IDs per UPDATE statement (default: 500).
+    :return: Tuple[bool, int]: ``True`` and the number of rows matched by the
+        update. The count is 0 when nothing matched or the list was empty.
+    :raises ValueError: If ``pk_field`` is not a primary-key column,
+        ``data`` is empty or names an unknown or primary-key column, or
+        ``chunk_size`` is not positive.
+    :raises Exception: Any database error, after the transaction has been
+        rolled back and the error logged.
     """
-    if not id_str_list or not data:
-        return False, 0
-
+    validate_primary_key_field(model, pk_field)
+    validate_update_columns(model, data)
+    updated = 0
     try:
-        stmnt = (
-            update(model)
-            .where(getattr(model, pk_field).in_(id_str_list))
-            .values(**data)
-        )
-        result = session_inst.exec(stmnt)
-        rowcount = result.rowcount
+        for chunk in chunked(id_str_list, chunk_size):
+            stmnt = (
+                update(model)
+                .where(getattr(model, pk_field).in_(chunk))
+                .values(**data)
+            )
+            result = session_inst.exec(stmnt)
+            updated += max(result.rowcount, 0)
         session_inst.commit()
     except Exception as e:
         session_inst.rollback()
-        logger.error(
-            f"Failed to bulk update rows. Please see error messages here: {e}"
-        )
-        return False, 0
+        logger.error(f"Failed to bulk update rows: {type(e)}, {e}")
+        raise
 
-    return rowcount > 0, rowcount
+    return True, updated
 
 
 def delete_row(
