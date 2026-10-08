@@ -4,15 +4,18 @@ from dateutil.parser import parse as date_parse
 from dotenv import load_dotenv
 from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.orm import lazyload, selectinload
-from sqlmodel import SQLModel, select
+from sqlmodel import SQLModel, delete, select, update
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.sql.expression import SelectOfScalar
 
 from sqlmodel_crud_utils.utils import (
+    chunked,
     get_sql_dialect_import,
     get_val,
     is_date,
     logger,
+    validate_primary_key_field,
+    validate_update_columns,
 )
 
 load_dotenv()  # take environment variables from .env.
@@ -448,6 +451,109 @@ async def get_rows_within_id_list(
         success = False
 
     return success, results
+
+
+async def delete_rows_within_id_list(
+    id_str_list: list[str | int],
+    session_inst: AsyncSession,
+    model: type[SQLModel],
+    pk_field: str = "id",
+    chunk_size: int = 500,
+) -> tuple[bool, int]:
+    """
+    Deletes every row whose primary key is within the provided list and
+    commits once. IDs with no matching row are ignored.
+
+    This is a hard SQL ``DELETE``: it bypasses ``SoftDeleteMixin`` (rows are
+    removed, not marked with ``deleted_at``) and any ORM-level hooks. The ID
+    list is split into ``chunk_size`` batches to stay under backend
+    bind-parameter limits. One ``DELETE ... WHERE pk IN (...)`` statement is
+    sent per batch (never per row), so 1,200 IDs at the default size is 3
+    statements. All batches share one transaction, so the call is
+    all-or-nothing.
+
+    :param id_str_list: List of primary key values to delete.
+    :param session_inst: SQLModel AsyncSession instance.
+    :param model: SQLModel class representing the table.
+    :param pk_field: Primary-key column to match against (default: "id").
+    :param chunk_size: Maximum IDs per DELETE statement (default: 500).
+    :return: Tuple[bool, int]: ``True`` and the number of rows deleted. The
+        count is 0 when nothing matched or the list was empty.
+    :raises ValueError: If ``pk_field`` is not a primary-key column of
+        ``model`` or ``chunk_size`` is not positive.
+    :raises Exception: Any database error, after the transaction has been
+        rolled back and the error logged.
+    """
+    validate_primary_key_field(model, pk_field)
+    deleted = 0
+    try:
+        for chunk in chunked(id_str_list, chunk_size):
+            stmnt = delete(model).where(getattr(model, pk_field).in_(chunk))
+            result = await session_inst.exec(stmnt)
+            deleted += max(result.rowcount, 0)
+        await session_inst.commit()
+    except Exception as e:
+        await session_inst.rollback()
+        logger.error(f"Failed to bulk delete rows: {type(e)}, {e}")
+        raise
+
+    return True, deleted
+
+
+async def bulk_update_rows(
+    id_str_list: list[str | int],
+    data: dict,
+    session_inst: AsyncSession,
+    model: type[SQLModel],
+    pk_field: str = "id",
+    chunk_size: int = 500,
+) -> tuple[bool, int]:
+    """
+    Applies the same column values to every row whose primary key is within
+    the provided list and commits once. IDs with no matching row are ignored.
+
+    This is a Core ``UPDATE``: ORM-level hooks and Python-side defaults do
+    not run, so ``AuditMixin.updated_at``/``updated_by`` are not refreshed
+    unless the caller includes them in ``data`` (column-level ``onupdate``
+    defaults, such as ``TimestampMixin.updated_at``, do fire). The ID list is
+    split into ``chunk_size`` batches. One ``UPDATE ... WHERE pk IN (...)``
+    statement is sent per batch (never per row), and all batches share one
+    transaction.
+
+    :param id_str_list: List of primary key values to update.
+    :param data: Mapping of column name to the new value for every row. Must
+        be non-empty and may not name a primary-key column.
+    :param session_inst: SQLModel AsyncSession instance.
+    :param model: SQLModel class representing the table.
+    :param pk_field: Primary-key column to match against (default: "id").
+    :param chunk_size: Maximum IDs per UPDATE statement (default: 500).
+    :return: Tuple[bool, int]: ``True`` and the number of rows matched by the
+        update. The count is 0 when nothing matched or the list was empty.
+    :raises ValueError: If ``pk_field`` is not a primary-key column,
+        ``data`` is empty or names an unknown or primary-key column, or
+        ``chunk_size`` is not positive.
+    :raises Exception: Any database error, after the transaction has been
+        rolled back and the error logged.
+    """
+    validate_primary_key_field(model, pk_field)
+    validate_update_columns(model, data)
+    updated = 0
+    try:
+        for chunk in chunked(id_str_list, chunk_size):
+            stmnt = (
+                update(model)
+                .where(getattr(model, pk_field).in_(chunk))
+                .values(**data)
+            )
+            result = await session_inst.exec(stmnt)
+            updated += max(result.rowcount, 0)
+        await session_inst.commit()
+    except Exception as e:
+        await session_inst.rollback()
+        logger.error(f"Failed to bulk update rows: {type(e)}, {e}")
+        raise
+
+    return True, updated
 
 
 async def delete_row(

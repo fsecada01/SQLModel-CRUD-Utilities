@@ -15,10 +15,14 @@ New in v0.2.0:
 __version__ = "0.2.0"
 
 # Import asynchronous functions with a_ prefix
+from sqlmodel_crud_utils.a_sync import bulk_update_rows as a_bulk_update_rows
 from sqlmodel_crud_utils.a_sync import (
     bulk_upsert_mappings as a_bulk_upsert_mappings,
 )
 from sqlmodel_crud_utils.a_sync import delete_row as a_delete_row
+from sqlmodel_crud_utils.a_sync import (
+    delete_rows_within_id_list as a_delete_rows_within_id_list,
+)
 from sqlmodel_crud_utils.a_sync import get_one_or_create as a_get_one_or_create
 from sqlmodel_crud_utils.a_sync import (
     get_result_from_query as a_get_result_from_query,
@@ -47,8 +51,10 @@ from sqlmodel_crud_utils.mixins import AuditMixin, SoftDeleteMixin
 
 # Import synchronous functions
 from sqlmodel_crud_utils.sync import (
+    bulk_update_rows,
     bulk_upsert_mappings,
     delete_row,
+    delete_rows_within_id_list,
     get_one_or_create,
     get_result_from_query,
     get_row,
@@ -66,8 +72,10 @@ __all__ = [
     # Version
     "__version__",
     # Synchronous functions
+    "bulk_update_rows",
     "bulk_upsert_mappings",
     "delete_row",
+    "delete_rows_within_id_list",
     "get_one_or_create",
     "get_result_from_query",
     "get_row",
@@ -77,8 +85,10 @@ __all__ = [
     "update_row",
     "write_row",
     # Asynchronous functions
+    "a_bulk_update_rows",
     "a_bulk_upsert_mappings",
     "a_delete_row",
+    "a_delete_rows_within_id_list",
     "a_get_one_or_create",
     "a_get_result_from_query",
     "a_get_row",
