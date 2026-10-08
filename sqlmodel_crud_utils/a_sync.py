@@ -215,20 +215,34 @@ async def get_rows(
     **kwargs,
 ):
     """
+    Retrieve rows for ``model``, building the query from ``kwargs`` or
+    running a caller-supplied statement.
 
-    :param session_inst:
-    :param model:
-    :param selectin:
-    :param select_in_keys:
-    :param lazy:
-    :param lazy_load_keys:
-    :param page_size:
-    :param page:
-    :param text_field:
-    :param stmnt:
-    :param kwargs:
-    :return:
+    Pagination applies only to statements built internally (``stmnt`` is
+    ``None``): ``page`` and ``page_size`` translate to OFFSET and LIMIT. A
+    caller-supplied ``stmnt`` is executed exactly as given; the caller owns
+    its pagination, so ``page``, ``page_size`` and any filter, sort or
+    loading arguments are ignored. Add ``.limit()``/``.offset()`` to the
+    statement yourself when you want a bounded result.
+
+    .. versionchanged:: Unreleased
+        A custom ``stmnt`` is no longer silently capped at ``page_size``
+        rows (issue #11).
+
+    :param session_inst: Active session used to execute the query.
+    :param model: SQLModel table class to query.
+    :param selectin: Enable ``selectinload`` for ``select_in_keys``.
+    :param select_in_keys: Relationship names to eager load via selectin.
+    :param lazy: Enable ``lazyload`` for ``lazy_load_keys``.
+    :param lazy_load_keys: Relationship names to lazy load.
+    :param page_size: Rows per page; ignored when ``stmnt`` is supplied.
+    :param page: 1-based page number; ignored when ``stmnt`` is supplied.
+    :param text_field: Field matched with a text search from ``kwargs``.
+    :param stmnt: Custom statement, executed as-is and never paginated.
+    :param kwargs: Filters and sort options for the built query.
+    :return: ``(success, rows)`` where ``success`` is True if rows exist.
     """
+    paginate = stmnt is None
     # kwargs = {k: v for k, v in kwargs.items() if v}
     # Inside get_rows (sync and async versions)
 
@@ -402,10 +416,8 @@ async def get_rows(
                         f"'{key}' on model {model.__name__}"
                     )
 
-    # Apply pagination
-    stmnt = stmnt.offset((page - 1) * page_size).limit(
-        page_size
-    )  # Corrected offset calculation
+    if paginate:
+        stmnt = stmnt.offset((page - 1) * page_size).limit(page_size)
     _result = await session_inst.exec(stmnt)
     results = _result.all()
     success = True if len(results) > 0 else False
