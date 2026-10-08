@@ -26,13 +26,7 @@ from .models import MockModel
 
 # Functions whose parameter lists are known to differ. Strict xfail: when the
 # drift is fixed the test XPASSes and fails, forcing this entry's removal.
-KNOWN_SIGNATURE_DRIFT = {
-    "get_row": (
-        "sync.get_row orders (lazy, lazy_load_keys, select_in_keys) while "
-        "a_sync.get_row and both get_rows use (select_in_keys, lazy, "
-        "lazy_load_keys); positional callers get different behavior."
-    ),
-}
+KNOWN_SIGNATURE_DRIFT: dict[str, str] = {}
 
 
 def _public_functions(module):
