@@ -4,7 +4,7 @@ from dateutil.parser import parse as date_parse
 from dotenv import load_dotenv
 from sqlalchemy.exc import MultipleResultsFound
 from sqlalchemy.orm import lazyload, selectinload
-from sqlmodel import SQLModel, select
+from sqlmodel import SQLModel, delete, select, update
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.sql.expression import SelectOfScalar
 
@@ -436,6 +436,85 @@ async def get_rows_within_id_list(
         success = False
 
     return success, results
+
+
+async def delete_rows_within_id_list(
+    id_str_list: list[str | int],
+    session_inst: AsyncSession,
+    model: type[SQLModel],
+    pk_field: str = "id",
+):
+    """
+    Deletes every row whose primary key is within the provided list using a
+    single DELETE statement and commits. IDs with no matching row are ignored.
+    On any database error the transaction is rolled back.
+
+    :param id_str_list: List of primary key values to delete.
+    :param session_inst: SQLModel AsyncSession instance.
+    :param model: SQLModel class representing the table.
+    :param pk_field: Name of the primary key field (default: "id").
+    :return: Tuple[bool, int]: Success flag (True only if at least one row
+             was deleted) and the number of rows deleted.
+    """
+    if not id_str_list:
+        return False, 0
+
+    try:
+        stmnt = delete(model).where(getattr(model, pk_field).in_(id_str_list))
+        result = await session_inst.exec(stmnt)
+        rowcount = result.rowcount
+        await session_inst.commit()
+    except Exception as e:
+        await session_inst.rollback()
+        logger.error(
+            f"Failed to bulk delete rows. Please see error messages here: {e}"
+        )
+        return False, 0
+
+    return rowcount > 0, rowcount
+
+
+async def bulk_update_rows(
+    id_str_list: list[str | int],
+    data: dict,
+    session_inst: AsyncSession,
+    model: type[SQLModel],
+    pk_field: str = "id",
+):
+    """
+    Applies the same column values to every row whose primary key is within
+    the provided list using a single UPDATE statement and commits. IDs with no
+    matching row are ignored. On any database error the transaction is rolled
+    back.
+
+    :param id_str_list: List of primary key values to update.
+    :param data: Mapping of column name to the new value for every row.
+    :param session_inst: SQLModel AsyncSession instance.
+    :param model: SQLModel class representing the table.
+    :param pk_field: Name of the primary key field (default: "id").
+    :return: Tuple[bool, int]: Success flag (True only if at least one row
+             was updated) and the number of rows updated.
+    """
+    if not id_str_list or not data:
+        return False, 0
+
+    try:
+        stmnt = (
+            update(model)
+            .where(getattr(model, pk_field).in_(id_str_list))
+            .values(**data)
+        )
+        result = await session_inst.exec(stmnt)
+        rowcount = result.rowcount
+        await session_inst.commit()
+    except Exception as e:
+        await session_inst.rollback()
+        logger.error(
+            f"Failed to bulk update rows. Please see error messages here: {e}"
+        )
+        return False, 0
+
+    return rowcount > 0, rowcount
 
 
 async def delete_row(
