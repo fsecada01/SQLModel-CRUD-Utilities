@@ -5,8 +5,8 @@ Tests for the async functions in `sqlmodel_crud_utils`
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import pytest
-from sqlmodel import (  # Import Relationship if needed for model definition
-    select,
+from sqlmodel import (
+    select,  # Import Relationship if needed for model definition
 )
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -32,8 +32,8 @@ from sqlmodel_crud_utils.a_sync import update_row as async_update_row
 from sqlmodel_crud_utils.a_sync import write_row as async_write_row
 
 from .conftest import MockModelFactory, MockRelatedModelFactory
-from .models import (  # Assuming MockRelatedModel is needed for relationship
-    MockModel,
+from .models import (
+    MockModel,  # Assuming MockRelatedModel is needed for relationship
 )
 
 # --- Tests for get_result_from_query ---
