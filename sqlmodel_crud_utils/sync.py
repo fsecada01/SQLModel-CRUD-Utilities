@@ -483,12 +483,25 @@ def bulk_upsert_mappings(
     pk_fields: list[str] | None = None,
 ):
     """
+    Insert or update a batch of rows in a single ``INSERT ... ON CONFLICT DO
+    UPDATE ... RETURNING`` statement.
 
-    :param payload:
-    :param session_inst:
-    :param model:
-    :param pk_fields:
-    :return:
+    The ``RETURNING`` rows are fully read (``.all()``) before ``commit()``.
+    SQLite refuses to commit while a result cursor is still unread
+    ("cannot commit transaction - SQL statements in progress"); Postgres
+    tolerates it. The upsert is also executed exactly once rather than once
+    bare and once more to fetch the rows.
+
+    Returned instances are expired by ``commit()`` when the session uses
+    ``expire_on_commit=True`` (the default), so read their attributes while
+    the session is open or create the session with ``expire_on_commit=False``.
+
+    :param payload: Row mappings to upsert; the first mapping's keys decide
+        which columns are overwritten on conflict.
+    :param session_inst: Active session.
+    :param model: Table model being upserted.
+    :param pk_fields: Conflict-target columns. Defaults to ``["id"]``.
+    :return: ``(True, rows)`` where ``rows`` are the upserted model instances.
     """
     if not pk_fields:
         pk_fields = ["id"]
