@@ -160,22 +160,27 @@ def get_row(
     session_inst: Session,
     model: type[SQLModel],
     selectin: bool = False,
+    select_in_keys: list[str] | None = None,
     lazy: bool = False,
     lazy_load_keys: list[str] | None = None,
-    select_in_keys: list[str] | None = None,
     pk_field: str = "id",
 ):
     """
+    Fetch a single row by primary key.
 
-    :param id_str:
-    :param session_inst:
-    :param model:
-    :param selectin:
-    :param lazy:
-    :param lazy_load_keys:
-    :param select_in_keys:
-    :param pk_field:
-    :return:
+    The optional parameters follow the same order as ``a_sync.get_row`` and
+    both ``get_rows`` functions, so positional calls bind identically in the
+    sync and async APIs.
+
+    :param id_str: Primary key value to look up.
+    :param session_inst: SQLModel Session instance.
+    :param model: SQLModel class representing the table.
+    :param selectin: Apply ``selectinload`` for ``select_in_keys``.
+    :param select_in_keys: Relationship name(s) to eager load.
+    :param lazy: Apply ``lazyload`` for ``lazy_load_keys``.
+    :param lazy_load_keys: Relationship name(s) to lazy load.
+    :param pk_field: Primary key field name (default: "id").
+    :return: Tuple[bool, SQLModel | None]: Success flag and the row, if found.
     """
     stmnt = select(model).where(getattr(model, pk_field) == id_str)
     if selectin and select_in_keys:

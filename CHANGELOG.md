@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `get_row()` (sync) now orders its optional parameters as
+  `selectin, select_in_keys, lazy, lazy_load_keys, pk_field`, matching
+  `a_get_row()` and both `get_rows()` functions (#19). Behavior change for
+  positional callers: previously `lazy` and `lazy_load_keys` came before
+  `select_in_keys`. Keyword callers are unaffected.
+
 ### Fixed
 - `get_rows()` / `a_get_rows()` no longer apply `.offset()/.limit()` to a
   caller-supplied `stmnt`, which was silently truncated to `page_size` (100)
