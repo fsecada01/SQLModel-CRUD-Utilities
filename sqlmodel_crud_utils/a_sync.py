@@ -496,15 +496,16 @@ async def bulk_upsert_mappings(
         index_elements=[getattr(model, x) for x in pk_fields],
         set_={k: getattr(stmnt.excluded, k) for k in payload[0].keys()},
     )
-    await session_inst.exec(stmnt)
-
-    results = await session_inst.scalars(
-        stmnt.returning(model), execution_options={"populate_existing": True}
-    )
+    results = (
+        await session_inst.scalars(
+            stmnt.returning(model),
+            execution_options={"populate_existing": True},
+        )
+    ).all()
 
     await session_inst.commit()
 
-    return True, results.all()
+    return True, results
 
 
 async def update_row(
