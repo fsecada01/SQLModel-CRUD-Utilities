@@ -482,12 +482,25 @@ async def bulk_upsert_mappings(
     pk_fields: list[str] | None = None,
 ):
     """
+    Insert or update a batch of rows in a single ``INSERT ... ON CONFLICT DO
+    UPDATE ... RETURNING`` statement.
 
-    :param payload:
-    :param session_inst:
-    :param model:
-    :param pk_fields:
-    :return:
+    The ``RETURNING`` rows are fully read (``.all()``) before ``commit()``.
+    SQLite refuses to commit while a result cursor is still unread
+    ("cannot commit transaction - SQL statements in progress"); Postgres
+    tolerates it. The upsert is also executed exactly once rather than once
+    bare and once more to fetch the rows.
+
+    Returned instances are expired by ``commit()`` when the session uses
+    ``expire_on_commit=True`` (the default), so read their attributes while
+    the session is open or create the session with ``expire_on_commit=False``.
+
+    :param payload: Row mappings to upsert; the first mapping's keys decide
+        which columns are overwritten on conflict.
+    :param session_inst: Active session.
+    :param model: Table model being upserted.
+    :param pk_fields: Conflict-target columns. Defaults to ``["id"]``.
+    :return: ``(True, rows)`` where ``rows`` are the upserted model instances.
     """
     if not pk_fields:
         pk_fields = ["id"]
@@ -496,15 +509,16 @@ async def bulk_upsert_mappings(
         index_elements=[getattr(model, x) for x in pk_fields],
         set_={k: getattr(stmnt.excluded, k) for k in payload[0].keys()},
     )
-    await session_inst.exec(stmnt)
-
-    results = await session_inst.scalars(
-        stmnt.returning(model), execution_options={"populate_existing": True}
-    )
+    results = (
+        await session_inst.scalars(
+            stmnt.returning(model),
+            execution_options={"populate_existing": True},
+        )
+    ).all()
 
     await session_inst.commit()
 
-    return True, results.all()
+    return True, results
 
 
 async def update_row(
