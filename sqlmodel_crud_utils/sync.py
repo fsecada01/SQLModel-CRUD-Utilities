@@ -1,7 +1,5 @@
 """ """
 
-from typing import Type
-
 from dateutil.parser import parse as date_parse
 from dotenv import load_dotenv
 from sqlalchemy.exc import MultipleResultsFound
@@ -41,7 +39,7 @@ def get_result_from_query(query: SelectOfScalar, session: Session):
 def get_one_or_create(
     session_inst: Session,
     model: type[SQLModel],
-    create_method_kwargs: dict = None,
+    create_method_kwargs: dict | None = None,
     selectin: bool = False,
     select_in_key: str | None = None,
     **kwargs,
@@ -87,12 +85,12 @@ def get_one_or_create(
         return created, False
 
 
-def write_row(data_row: Type[SQLModel], session_inst: Session):
+def write_row(data_row: SQLModel, session_inst: Session):
     """
     Writes a new instance of an SQLModel ORM model to the database, with an
     exception catch that rolls back the session in the event of failure.
 
-    :param data_row: Type[SQLModel]
+    :param data_row: SQLModel
     :param session_inst: Session
     :return: Tuple[bool, ScalarResult]
     """
@@ -151,7 +149,7 @@ def insert_data_rows(data_rows, session_inst: Session):
 
 
 def get_row(
-    id_str: str or int,
+    id_str: str | int,
     session_inst: Session,
     model: type[SQLModel],
     selectin: bool = False,
@@ -438,7 +436,7 @@ def get_rows_within_id_list(
 
 
 def delete_row(
-    id_str: str or int,
+    id_str: str | int,
     session_inst: Session,
     model: type[SQLModel],
     pk_field: str = "id",

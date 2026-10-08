@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SQLModel CRUD Utils - Streamline Your Database Operations</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #3660a5;
+            --primary-hover: #1659c5;
+            --secondary-color: #488efc;
+            --background: #ffffff;
+            --text-color: #212529;
+            --muted-color: #6c757d;
+            --accent-bg: #f8f9fa;
+            --border-color: #dee2e6;
+            --code-bg: #f8f8f8;
+            --success-color: #28a745;
+            --info-color: #17a2b8;
+            --warning-color: #ffc107;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: var(--background);
+        }
+
+        /* Header & Navigation */
+        header {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        nav {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-decoration: none;
+            color: white;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .nav-links a:hover,
+        .nav-links a.active {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+        }
+
+        .hero-content {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            font-weight: 300;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            margin-bottom: 2rem;
+            opacity: 0.95;
+        }
+
+        .badges {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 2rem 0;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            height: 20px;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background-color: white;
+            color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background-color: white;
+            color: var(--primary-color);
+        }
+
+        /* Main Content */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        section {
+            padding: 4rem 0;
+        }
+
+        section:nth-child(even) {
+            background-color: var(--accent-bg);
+        }
+
+        h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            font-weight: 300;
+        }
+
+        h3 {
+            font-size: 1.75rem;
+            margin: 2rem 0 1rem;
+            color: var(--text-color);
+            font-weight: 400;
+        }
+
+        h4 {
+            font-size: 1.25rem;
+            margin: 1.5rem 0 0.75rem;
+            color: var(--text-color);
+        }
+
+        /* Features Grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            margin-top: 0;
+            font-size: 1.5rem;
+        }
+
+        /* What's New Section */
+        .whats-new {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        }
+
+        .new-features {
+            display: grid;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .new-feature {
+            background: white;
+            padding: 1.5rem;
+            border-left: 4px solid var(--secondary-color);
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .new-feature h4 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+
+        /* Code Examples */
+        .code-example {
+            background: var(--code-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            margin: 1.5rem 0;
+        }
+
+        .code-header {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        pre {
+            margin: 0;
+            padding: 1rem;
+            overflow-x: auto;
+        }
+
+        code {
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9rem;
+        }
+
+        /* Quick Start */
+        .quick-start-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        /* Footer */
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+        }
+
+        footer a {
+            color: var(--secondary-color);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+            }
+
+            h2 {
+                font-size: 2rem;
+            }
+
+            .nav-links {
+                flex-direction: column;
+                gap: 0.5rem;
+                width: 100%;
+                margin-top: 1rem;
+            }
+
+            .quick-start-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .compatibility-note {
+            background: #e7f3ff;
+            border-left: 4px solid var(--info-color);
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="index.html" class="logo">SQLModel CRUD Utils</a>
+            <ul class="nav-links">
+                <li><a href="index.html" class="active">Home</a></li>
+                <li><a href="use-cases.html">Use Cases</a></li>
+                <li><a href="recipes.html">Recipes</a></li>
+                <li><a href="sqlmodel_crud_utils.html">API Reference</a></li>
+                <li><a href="https://github.com/fsecada01/SQLModel-CRUD-Utilities">GitHub</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <div class="hero">
+        <div class="hero-content">
+            <h1>SQLModel CRUD Utils</h1>
+            <p>A set of CRUD utilities designed to streamline and expedite common database operations when using SQLModel, offering both synchronous and asynchronous support.</p>
+
+            <div class="badges">
+                <img src="https://img.shields.io/pypi/v/sqlmodel-crud-utils" alt="PyPI Version" class="badge">
+                <img src="https://github.com/fsecada01/SQLModel-CRUD-Utilities/workflows/CI/badge.svg" alt="CI Status" class="badge">
+                <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License" class="badge">
+                <img src="https://img.shields.io/badge/Python-3.9+-3776AB.svg?logo=Python&logoColor=white" alt="Python" class="badge">
+            </div>
+
+            <div class="cta-buttons">
+                <a href="#quick-start" class="btn btn-primary">Get Started</a>
+                <a href="sqlmodel_crud_utils.html" class="btn btn-secondary">API Documentation</a>
+            </div>
+        </div>
+    </div>
+
+    <section>
+        <div class="container">
+            <h2>Overview</h2>
+            <p>
+                <strong>sqlmodel-crud-utils</strong> provides a convenient layer on top of SQLModel and SQLAlchemy to simplify common database interactions.
+                It offers both synchronous and asynchronous functions for creating, reading, updating, and deleting data, along with helpers for
+                bulk operations, filtering, pagination, and relationship loading. The goal is to reduce boilerplate code in projects using SQLModel.
+            </p>
+        </div>
+    </section>
+
+    <section class="whats-new">
+        <div class="container">
+            <h2>What's New in v0.2.0</h2>
+            <p>Version 0.2.0 brings significant enhancements focused on developer experience and production-ready features:</p>
+
+            <div class="new-features">
+                <div class="new-feature">
+                    <h4>🚀 Public API Exports</h4>
+                    <p>No more deep imports! All functions are now available directly from the package:</p>
+                    <div class="code-example">
+                        <div class="code-header">Python</div>
+                        <pre><code class="language-python"># Before (v0.1.0)
+from sqlmodel_crud_utils.sync import get_row, update_row
+from sqlmodel_crud_utils.a_sync import get_row as a_get_row
+
+# After (v0.2.0)
+from sqlmodel_crud_utils import get_row, update_row, a_get_row</code></pre>
+                    </div>
+                </div>
+
+                <div class="new-feature">
+                    <h4>⚠️ Custom Exception Hierarchy</h4>
+                    <p>Better error handling with detailed, context-aware exceptions:</p>
+                    <ul>
+                        <li><code>RecordNotFoundError</code> - When a record doesn't exist</li>
+                        <li><code>MultipleRecordsError</code> - When one record expected but multiple found</li>
+                        <li><code>ValidationError</code> - For data validation failures</li>
+                        <li><code>BulkOperationError</code> - For bulk operation failures with detailed stats</li>
+                        <li><code>TransactionError</code> - For transaction-related issues</li>
+                    </ul>
+                </div>
+
+                <div class="new-feature">
+                    <h4>🔒 Transaction Context Managers</h4>
+                    <p>Safer database operations with automatic commit and rollback:</p>
+                    <div class="code-example">
+                        <div class="code-header">Python</div>
+                        <pre><code class="language-python">from sqlmodel_crud_utils import transaction, write_row, update_row
+
+with transaction(session) as tx:
+    user = write_row(User(name="Alice"), tx)
+    update_row(user.id, {"email": "alice@example.com"}, User, tx)
+    # Automatically commits on success, rolls back on error</code></pre>
+                    </div>
+                </div>
+
+                <div class="new-feature">
+                    <h4>📝 Audit Trail Mixins</h4>
+                    <p>Automatic timestamp tracking for record creation and updates:</p>
+                    <div class="code-example">
+                        <div class="code-header">Python</div>
+                        <pre><code class="language-python">from sqlmodel_crud_utils import AuditMixin
+
+class User(SQLModel, AuditMixin, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    # Automatically adds: created_at, updated_at, created_by, updated_by</code></pre>
+                    </div>
+                </div>
+
+                <div class="new-feature">
+                    <h4>🗑️ Soft Delete Support</h4>
+                    <p>Mark records as deleted without actually removing them:</p>
+                    <div class="code-example">
+                        <div class="code-header">Python</div>
+                        <pre><code class="language-python">from sqlmodel_crud_utils import SoftDeleteMixin
+
+class Product(SQLModel, SoftDeleteMixin, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    # Automatically adds: is_deleted, deleted_at, deleted_by
+
+product.soft_delete(user="admin")  # Mark as deleted
+product.restore()                  # Restore it</code></pre>
+                    </div>
+                </div>
+            </div>
+
+            <div class="compatibility-note">
+                <strong>✅ 100% Backward Compatible</strong> - All v0.1.0 code continues to work without changes!
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Key Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>Sync & Async Support</h3>
+                    <p>Parallel functions for both synchronous and asynchronous operations with simple <code>a_</code> prefix for async versions.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📦</div>
+                    <h3>Simplified CRUD</h3>
+                    <p>High-level functions for common operations: get, create, update, delete, bulk operations, and upserts.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🔍</div>
+                    <h3>Flexible Filtering</h3>
+                    <p>Supports exact matches and comparisons (<code>__like</code>, <code>__gte</code>, <code>__lte</code>, <code>__in</code>) with keyword arguments.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📄</div>
+                    <h3>Built-in Pagination</h3>
+                    <p>Easy pagination support with offset and limit parameters for efficient data retrieval.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🔗</div>
+                    <h3>Relationship Loading</h3>
+                    <p>Supports eager loading (<code>selectinload</code>) and lazy loading (<code>lazyload</code>) for related data.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3>Type-Safe</h3>
+                    <p>Full type hints throughout for excellent IDE support and static type checking.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h3>Dialect-Specific Upsert</h3>
+                    <p>Automatically uses the correct upsert syntax for PostgreSQL, SQLite, or MySQL based on configuration.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3>Exception Handling</h3>
+                    <p>Custom exception hierarchy with detailed context for better error handling and debugging.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Audit Trails</h3>
+                    <p>Built-in mixins for automatic timestamp and user tracking on all database operations.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section id="quick-start">
+        <div class="container">
+            <h2>Quick Start</h2>
+
+            <h3>Installation</h3>
+            <div class="code-example">
+                <div class="code-header">Bash</div>
+                <pre><code class="language-bash">pip install sqlmodel-crud-utils
+# Or using uv:
+uv pip install sqlmodel-crud-utils</code></pre>
+            </div>
+
+            <h3>Configuration</h3>
+            <p>Set the <code>SQL_DIALECT</code> environment variable for upsert functionality:</p>
+            <div class="code-example">
+                <div class="code-header">Bash / .env</div>
+                <pre><code class="language-bash">export SQL_DIALECT=postgresql  # or sqlite, mysql, etc</code></pre>
+            </div>
+
+            <h3>Basic Usage Examples</h3>
+            <div class="quick-start-grid">
+                <div>
+                    <h4>Simple CRUD Operations</h4>
+                    <div class="code-example">
+                        <div class="code-header">Python</div>
+                        <pre><code class="language-python">from sqlmodel import Session, SQLModel, create_engine, Field
+from sqlmodel_crud_utils import get_one_or_create, get_rows, write_row
+
+class MyModel(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str = Field(index=True)
+    value: int | None = None
+
+DATABASE_URL = "sqlite:///./mydatabase.db"
+engine = create_engine(DATABASE_URL)
+SQLModel.metadata.create_all(engine)
+
+with Session(engine) as session:
+    # Get or create an instance
+    instance, created = get_one_or_create(
+        session_inst=session,
+        model=MyModel,
+        name="Test Item",
+        create_method_kwargs={"value": 123}
+    )
+
+    # Query with filtering
+    success, rows = get_rows(
+        session_inst=session,
+        model=MyModel,
+        value__gte=100,
+        sort_field="name"
+    )
+    for row in rows:
+        print(f"{row.name}: {row.value}")</code></pre>
+                    </div>
+                </div>
+
+                <div>
+                    <h4>Exception Handling</h4>
+                    <div class="code-example">
+                        <div class="code-header">Python</div>
+                        <pre><code class="language-python">from sqlmodel_crud_utils import (
+    get_row,
+    RecordNotFoundError,
+    update_row,
+    ValidationError
+)
+
+try:
+    success, user = get_row(
+        id_str=999,
+        session_inst=session,
+        model=User
+    )
+    if not success:
+        raise RecordNotFoundError(
+            model=User,
+            id_value=999
+        )
+except RecordNotFoundError as e:
+    print(f"Error: {e}")
+    print(f"Model: {e.model.__name__}")
+    print(f"ID: {e.id_value}")</code></pre>
+                    </div>
+                </div>
+
+                <div>
+                    <h4>Transactions</h4>
+                    <div class="code-example">
+                        <div class="code-header">Python</div>
+                        <pre><code class="language-python">from sqlmodel_crud_utils import (
+    transaction,
+    write_row,
+    update_row,
+    TransactionError
+)
+
+with Session(engine) as session:
+    try:
+        with transaction(session) as tx:
+            # All operations succeed together
+            # or all are rolled back
+            user = write_row(
+                User(name="Alice"),
+                tx
+            )
+            profile = write_row(
+                Profile(user_id=user.id),
+                tx
+            )
+            update_row(
+                user.id,
+                {"verified": True},
+                User,
+                tx
+            )
+            # Commits automatically
+    except TransactionError as e:
+        print(f"Transaction failed: {e}")
+        # Rolled back automatically</code></pre>
+                    </div>
+                </div>
+
+                <div>
+                    <h4>Async Operations</h4>
+                    <div class="code-example">
+                        <div class="code-header">Python</div>
+                        <pre><code class="language-python">from sqlmodel_crud_utils import (
+    a_get_rows,
+    a_write_row,
+    a_transaction
+)
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine
+
+async_engine = create_async_engine(
+    "sqlite+aiosqlite:///./db.db"
+)
+
+async with AsyncSession(async_engine) as session:
+    # Async query
+    success, users = await a_get_rows(
+        session_inst=session,
+        model=User,
+        is_active=True
+    )
+
+    # Async transaction
+    async with a_transaction(session) as tx:
+        user = await a_write_row(
+            User(name="Bob"),
+            tx
+        )</code></pre>
+                    </div>
+                </div>
+
+                <div>
+                    <h4>Audit Mixins</h4>
+                    <div class="code-example">
+                        <div class="code-header">Python</div>
+                        <pre><code class="language-python">from sqlmodel_crud_utils import (
+    AuditMixin,
+    write_row
+)
+
+class User(SQLModel, AuditMixin, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str
+    # Auto-adds: created_at, updated_at,
+    # created_by, updated_by
+
+with Session(engine) as session:
+    user = User(
+        name="Alice",
+        created_by="admin"
+    )
+    user = write_row(user, session)
+
+    # Timestamps set automatically
+    print(f"Created: {user.created_at}")
+
+    # Update tracking
+    user.email = "alice@example.com"
+    user.updated_by = "admin"
+    session.add(user)
+    session.commit()
+    print(f"Updated: {user.updated_at}")</code></pre>
+                    </div>
+                </div>
+
+                <div>
+                    <h4>Soft Deletes</h4>
+                    <div class="code-example">
+                        <div class="code-header">Python</div>
+                        <pre><code class="language-python">from sqlmodel_crud_utils import (
+    SoftDeleteMixin,
+    get_rows
+)
+
+class Product(SQLModel, SoftDeleteMixin, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    name: str
+    # Auto-adds: is_deleted, deleted_at,
+    # deleted_by
+
+with Session(engine) as session:
+    product = Product(name="Widget")
+    product = write_row(product, session)
+
+    # Soft delete
+    product.soft_delete(user="admin")
+    session.add(product)
+    session.commit()
+
+    # Restore
+    product.restore()
+    session.commit()
+
+    # Query non-deleted only
+    success, active = get_rows(
+        session_inst=session,
+        model=Product,
+        is_deleted=False
+    )</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section>
+        <div class="container">
+            <h2>Next Steps</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>📚 Explore Use Cases</h3>
+                    <p>See real-world scenarios and implementation patterns for REST APIs, microservices, admin dashboards, and more.</p>
+                    <a href="use-cases.html" class="btn btn-primary" style="margin-top: 1rem;">View Use Cases</a>
+                </div>
+
+                <div class="feature-card">
+                    <h3>🍳 Browse Recipes</h3>
+                    <p>Practical code patterns for complex filtering, pagination, batch processing, and performance optimization.</p>
+                    <a href="recipes.html" class="btn btn-primary" style="margin-top: 1rem;">View Recipes</a>
+                </div>
+
+                <div class="feature-card">
+                    <h3>📖 API Reference</h3>
+                    <p>Complete API documentation with detailed function signatures, parameters, and return types.</p>
+                    <a href="sqlmodel_crud_utils.html" class="btn btn-primary" style="margin-top: 1rem;">API Docs</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 SQLModel CRUD Utils. Licensed under the <a href="https://github.com/fsecada01/SQLModel-CRUD-Utilities/blob/main/LICENSE">MIT License</a>.</p>
+            <p>
+                <a href="https://github.com/fsecada01/SQLModel-CRUD-Utilities">GitHub</a> |
+                <a href="https://pypi.org/project/sqlmodel-crud-utils/">PyPI</a> |
+                <a href="https://github.com/fsecada01/SQLModel-CRUD-Utilities/issues">Issues</a> |
+                <a href="https://github.com/fsecada01/SQLModel-CRUD-Utilities/discussions">Discussions</a>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        hljs.highlightAll();
+    </script>
+</body>
+</html>

@@ -1,13 +1,14 @@
 import importlib
 import logging
 import os
+from typing import Any
 
 from dateutil.parser import parse as date_parse
 
 try:
     from loguru import logger
 except ImportError:
-    logger = logging.getLogger("sqlmodel_crud_utils")
+    logger: Any = logging.getLogger("sqlmodel_crud_utils")  # type: ignore[assignment]
 
 
 def get_val(val: str):
@@ -31,7 +32,7 @@ def get_sql_dialect_import(dialect: str):
 
     :return: func
     """
-    return importlib.import_module(f"sqlalchemy.dialects" f".{dialect}").insert
+    return importlib.import_module(f"sqlalchemy.dialects" f".{dialect}").insert  # type: ignore[attr-defined]
 
 
 def is_date(val: str, fuzzy: bool = False):
