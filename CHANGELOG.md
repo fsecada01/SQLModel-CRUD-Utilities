@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `get_rows()` / `a_get_rows()` no longer apply `.offset()/.limit()` to a
+  caller-supplied `stmnt`, which was silently truncated to `page_size` (100)
+  rows (#11). Behavior change: a custom `stmnt` now runs exactly as given and
+  the caller owns its pagination; `page`/`page_size` only affect statements
+  built internally.
+
 ## [0.2.0] - 2026-02-16
 
 ### Added
