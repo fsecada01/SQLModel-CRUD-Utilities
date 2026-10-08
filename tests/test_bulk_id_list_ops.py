@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, event, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel import Session, SQLModel
@@ -242,3 +242,49 @@ async def test_a_bulk_update_database_error_rolls_back_and_raises(a_session):
     with pytest.raises(IntegrityError):
         await a_bulk_update_rows([1, 2], {"name": None}, a_session, MockModel)
     assert (await _a_rows(a_session))[0] == (1, "one", 10)
+
+
+def _record(engine, verb):
+    """Record the bind-parameter count of each ``verb`` statement sent."""
+    params_per_statement = []
+
+    @event.listens_for(engine, "before_cursor_execute")
+    def _on_execute(conn, cursor, statement, parameters, *args):
+        if statement.lstrip().upper().startswith(verb):
+            params_per_statement.append(len(parameters))
+
+    return params_per_statement
+
+
+def test_delete_sends_one_statement_per_batch_not_per_row(session):
+    seen = _record(session.get_bind(), "DELETE")
+    delete_rows_within_id_list(
+        [1, 2, 3, 4, 99], session, MockModel, chunk_size=2
+    )
+    assert seen == [2, 2, 1]
+
+
+def test_update_sends_one_statement_per_batch_not_per_row(session):
+    seen = _record(session.get_bind(), "UPDATE")
+    bulk_update_rows(
+        [1, 2, 3, 4, 99], {"value": 0}, session, MockModel, chunk_size=2
+    )
+    assert len(seen) == 3
+
+
+@pytest.mark.asyncio
+async def test_a_delete_sends_one_statement_per_batch_not_per_row(a_session):
+    seen = _record(a_session.bind.sync_engine, "DELETE")
+    await a_delete_rows_within_id_list(
+        [1, 2, 3, 4, 99], a_session, MockModel, chunk_size=2
+    )
+    assert seen == [2, 2, 1]
+
+
+@pytest.mark.asyncio
+async def test_a_update_sends_one_statement_per_batch_not_per_row(a_session):
+    seen = _record(a_session.bind.sync_engine, "UPDATE")
+    await a_bulk_update_rows(
+        [1, 2, 3, 4, 99], {"value": 0}, a_session, MockModel, chunk_size=2
+    )
+    assert len(seen) == 3

@@ -456,7 +456,9 @@ def delete_rows_within_id_list(
     This is a hard SQL ``DELETE``: it bypasses ``SoftDeleteMixin`` (rows are
     removed, not marked with ``deleted_at``) and any ORM-level hooks. The ID
     list is split into ``chunk_size`` batches to stay under backend
-    bind-parameter limits; all batches share one transaction, so the call is
+    bind-parameter limits. One ``DELETE ... WHERE pk IN (...)`` statement is
+    sent per batch (never per row), so 1,200 IDs at the default size is 3
+    statements. All batches share one transaction, so the call is
     all-or-nothing.
 
     :param id_str_list: List of primary key values to delete.
@@ -503,7 +505,9 @@ def bulk_update_rows(
     not run, so ``AuditMixin.updated_at``/``updated_by`` are not refreshed
     unless the caller includes them in ``data`` (column-level ``onupdate``
     defaults, such as ``TimestampMixin.updated_at``, do fire). The ID list is
-    split into ``chunk_size`` batches; all batches share one transaction.
+    split into ``chunk_size`` batches. One ``UPDATE ... WHERE pk IN (...)``
+    statement is sent per batch (never per row), and all batches share one
+    transaction.
 
     :param id_str_list: List of primary key values to update.
     :param data: Mapping of column name to the new value for every row. Must
