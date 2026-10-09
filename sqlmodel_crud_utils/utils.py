@@ -5,6 +5,7 @@ from typing import Any, Iterator, Sequence
 
 from dateutil.parser import parse as date_parse
 from sqlalchemy import func
+from sqlalchemy.sql import operators
 from sqlmodel import select
 
 try:
@@ -172,11 +173,22 @@ class QueryBuilderBase:
 
         :param columns: Column names or column expressions.
         :param desc: Sort every given column in descending order.
-        :raises ValueError: If a name is not a column of the model.
+        :raises ValueError: If a name is not a column of the model, or if
+            ``desc`` is set and an expression already carries ``asc()`` or
+            ``desc()``.
         :return: A new builder.
         """
         terms = [self._column(c) if isinstance(c, str) else c for c in columns]
         if desc:
+            if any(
+                getattr(t, "modifier", None)
+                in (operators.asc_op, operators.desc_op)
+                for t in terms
+            ):
+                raise ValueError(
+                    "desc=True cannot be combined with an expression that "
+                    "already has a sort direction"
+                )
             terms = [t.desc() for t in terms]
         return self._derive(self._stmnt.order_by(*terms))
 
@@ -203,7 +215,8 @@ class QueryBuilderBase:
         return self._derive(self._stmnt.offset(count))
 
     def _first_stmnt(self):
-        return self._stmnt.limit(1)
+        cap = 0 if self._stmnt._limit == 0 else 1
+        return self._stmnt.limit(cap)
 
     def _count_stmnt(self):
         return select(func.count()).select_from(self._stmnt.subquery())

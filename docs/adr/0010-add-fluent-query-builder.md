@@ -26,6 +26,8 @@ awaited factory would be awkward. Statement composition lives in a shared pure b
   keyword equality filters, all AND-ed. `order_by(*columns, desc=False)`
   takes column names or expressions and appends. `limit` and `offset` take
   non-negative integers; the last call wins.
+  `desc=True` is rejected with `ValueError` for an expression that already
+  carries `asc()` or `desc()`.
 - Caller `stmnt`: the builder starts from it and adds its clauses on top
   (AND for filters, appended ordering). This differs deliberately from
   `get_rows`, which runs a custom `stmnt` untouched (issue #11), because
@@ -33,10 +35,13 @@ awaited factory would be awkward. Statement composition lives in a shared pure b
 - Relationship loading: the builder adds no loading API. Loader options
   already on the starting `stmnt` (for example
   `select(M).options(selectinload(M.rel))`) are preserved by composition.
+  `all()` de-duplicates rows, so collection `joinedload` options work.
 - Terminals follow the library's `(success, data)` convention: `all()`
   returns `(bool, list)`, `first()` returns `(bool, row | None)` and
   `count()` returns `(bool, int)`; `success` is true when rows exist. Count
   is taken over the composed statement including any limit and offset.
+  `first()` returns at most one row and still honors `limit(0)`, giving
+  `(False, None)`.
 - No new dependency and no change to existing functions.
 
 ## Consequences

@@ -6,7 +6,7 @@ import pytest
 import pytest_asyncio
 from sqlalchemy import create_engine, or_
 from sqlalchemy.ext.asyncio import create_async_engine
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import joinedload, selectinload
 from sqlmodel import Session, SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -226,3 +226,69 @@ async def test_async_composes_with_caller_stmnt(async_session):
     )
     assert _ids(rows) == [4, 5]
     assert rows[0].related_field.related_name == "parent"
+
+
+def test_first_honors_limit_zero(session):
+    qb = QueryBuilder(session, MockModel).limit(0)
+    assert qb.all() == (False, [])
+    assert qb.first() == (False, None)
+
+
+def test_first_without_limit_still_returns_one_row(session):
+    ok, row = QueryBuilder(session, MockModel).order_by("id").first()
+    assert (ok, row.id) == (True, 1)
+
+
+def test_order_by_desc_rejects_expression_with_direction(session):
+    qb = QueryBuilder(session, MockModel)
+    with pytest.raises(ValueError, match="direction"):
+        qb.order_by(MockModel.value.desc(), desc=True)
+    with pytest.raises(ValueError, match="direction"):
+        qb.order_by("id", MockModel.value.asc(), desc=True)
+
+
+def test_order_by_desc_accepts_plain_expression(session):
+    _, rows = (
+        QueryBuilder(session, MockModel)
+        .order_by(MockModel.value, desc=True)
+        .all()
+    )
+    assert _ids(rows) == [5, 4, 3, 2, 1]
+
+
+def test_all_with_joinedload_collection_stmnt(session):
+    stmnt = select(MockRelatedModel).options(
+        joinedload(MockRelatedModel.mock_models)
+    )
+    ok, rows = QueryBuilder(session, MockRelatedModel, stmnt=stmnt).all()
+    assert ok is True
+    assert [r.id for r in rows] == [1]
+    assert len(rows[0].mock_models) == 5
+
+
+@pytest.mark.asyncio
+async def test_async_first_honors_limit_zero(async_session):
+    qb = AsyncQueryBuilder(async_session, MockModel).limit(0)
+    assert await qb.all() == (False, [])
+    assert await qb.first() == (False, None)
+
+
+@pytest.mark.asyncio
+async def test_async_order_by_desc_rejects_expression_with_direction(
+    async_session,
+):
+    qb = AsyncQueryBuilder(async_session, MockModel)
+    with pytest.raises(ValueError, match="direction"):
+        qb.order_by(MockModel.value.desc(), desc=True)
+
+
+@pytest.mark.asyncio
+async def test_async_all_with_joinedload_collection_stmnt(async_session):
+    stmnt = select(MockRelatedModel).options(
+        joinedload(MockRelatedModel.mock_models)
+    )
+    ok, rows = await AsyncQueryBuilder(
+        async_session, MockRelatedModel, stmnt=stmnt
+    ).all()
+    assert ok is True
+    assert [r.id for r in rows] == [1]

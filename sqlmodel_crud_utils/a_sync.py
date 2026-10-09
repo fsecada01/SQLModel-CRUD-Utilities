@@ -693,7 +693,7 @@ class AsyncQueryBuilder(QueryBuilderBase):
         :return: ``(success, rows)``; ``rows`` is an empty list when nothing
             matched.
         """
-        rows = (await self._session.exec(self._stmnt)).all()
+        rows = (await self._session.exec(self._stmnt)).unique().all()
         return len(rows) > 0, rows
 
     async def first(self):

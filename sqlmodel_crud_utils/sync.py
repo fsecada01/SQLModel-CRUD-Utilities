@@ -699,7 +699,7 @@ class QueryBuilder(QueryBuilderBase):
         :return: ``(success, rows)``; ``rows`` is an empty list when nothing
             matched.
         """
-        rows = self._session.exec(self._stmnt).all()
+        rows = self._session.exec(self._stmnt).unique().all()
         return len(rows) > 0, rows
 
     def first(self):
