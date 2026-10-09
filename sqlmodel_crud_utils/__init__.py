@@ -4,7 +4,7 @@ SQLModel CRUD Utilities
 A set of CRUD utilities to expedite operations with SQLModel, providing both
 synchronous and asynchronous support for common database operations.
 
-New in v0.2.0:
+New in v0.2.0 (see CHANGELOG.md for later releases):
     - Custom exception hierarchy for better error handling
     - Transaction context managers for safe operations
     - Audit trail mixins (created_at, updated_at tracking)
@@ -12,7 +12,7 @@ New in v0.2.0:
     - Public API exports for easier imports
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 # Import asynchronous functions with a_ prefix
 from sqlmodel_crud_utils.a_sync import bulk_update_rows as a_bulk_update_rows
