@@ -14,6 +14,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   are immutable and compose onto an optional caller `stmnt`, keeping its
   loader options. Opt-in and backward compatible; supersedes ADR-0007 for
   this item (ADR-0010, #23).
+- Opt-in read caching (ADR-0012, #25): `get_row()` / `get_rows()` accept
+  `use_cache=True` and `cache_ttl` (sync and async). Nothing is cached until
+  `configure_cache(backend)` is called. Backends: `InMemoryCache` (default)
+  and `RedisCache` (new optional `cache` extra), or subclass `CacheBackend`.
+  Every write helper, including the bulk helpers, invalidates the written
+  model's entries after commit; `invalidate_cache()` covers writes made
+  outside the library. Cache hits are new session-detached instances, and
+  calls with `stmnt`, `selectin` or `lazy` bypass the cache.
+- Opt-in change tracking (ADR-0011, #24): `TrackChangesMixin`,
+  `register_change_tracking()`, the `HISTORY_METADATA` / `change_history`
+  table and `get_change_history()` / `a_get_change_history()`. Records ORM
+  inserts, updates and deletes with old and new values. The bulk helpers use
+  Core statements and are not tracked. The history table is not created
+  unless you call `HISTORY_METADATA.create_all()`.
 
 ## [0.3.0] - 2026-10-08
 

@@ -24,6 +24,9 @@ from sqlmodel_crud_utils.a_sync import delete_row as a_delete_row
 from sqlmodel_crud_utils.a_sync import (
     delete_rows_within_id_list as a_delete_rows_within_id_list,
 )
+from sqlmodel_crud_utils.a_sync import (
+    get_change_history as a_get_change_history,
+)
 from sqlmodel_crud_utils.a_sync import get_one_or_create as a_get_one_or_create
 from sqlmodel_crud_utils.a_sync import (
     get_result_from_query as a_get_result_from_query,
@@ -36,6 +39,15 @@ from sqlmodel_crud_utils.a_sync import (
 from sqlmodel_crud_utils.a_sync import insert_data_rows as a_insert_data_rows
 from sqlmodel_crud_utils.a_sync import update_row as a_update_row
 from sqlmodel_crud_utils.a_sync import write_row as a_write_row
+
+# Import cache
+from sqlmodel_crud_utils.cache import (
+    CacheBackend,
+    InMemoryCache,
+    RedisCache,
+    configure_cache,
+    invalidate_cache,
+)
 
 # Import exceptions
 from sqlmodel_crud_utils.exceptions import (
@@ -61,6 +73,7 @@ from sqlmodel_crud_utils.sync import (
     bulk_upsert_mappings,
     delete_row,
     delete_rows_within_id_list,
+    get_change_history,
     get_one_or_create,
     get_result_from_query,
     get_row,
@@ -69,6 +82,13 @@ from sqlmodel_crud_utils.sync import (
     insert_data_rows,
     update_row,
     write_row,
+)
+
+# Import change tracking
+from sqlmodel_crud_utils.tracking import (
+    HISTORY_METADATA,
+    TrackChangesMixin,
+    register_change_tracking,
 )
 
 # Import transaction managers
@@ -82,6 +102,7 @@ __all__ = [
     "bulk_upsert_mappings",
     "delete_row",
     "delete_rows_within_id_list",
+    "get_change_history",
     "get_one_or_create",
     "get_result_from_query",
     "get_row",
@@ -95,6 +116,7 @@ __all__ = [
     "a_bulk_upsert_mappings",
     "a_delete_row",
     "a_delete_rows_within_id_list",
+    "a_get_change_history",
     "a_get_one_or_create",
     "a_get_result_from_query",
     "a_get_row",
@@ -120,4 +142,14 @@ __all__ = [
     "AuditMixin",
     "SoftDeleteMixin",
     "TimestampMixin",
+    # Caching
+    "CacheBackend",
+    "InMemoryCache",
+    "RedisCache",
+    "configure_cache",
+    "invalidate_cache",
+    # Change tracking
+    "HISTORY_METADATA",
+    "TrackChangesMixin",
+    "register_change_tracking",
 ]

@@ -78,6 +78,7 @@ dependencies = [
 
 [project.optional-dependencies]
 loguru = ["loguru>=0.7.3"]
+cache = ["redis>=5.0"]
 [project.urls]
 "Homepage" = "https://fsecada01.github.io/SQLModel-CRUD-Utilities/sqlmodel_crud_utils.html"
 "Repository" = "https://github.com/fsecada01/SQLModel-CRUD-Utilities"
