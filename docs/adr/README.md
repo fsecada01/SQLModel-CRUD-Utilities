@@ -35,10 +35,11 @@ Options rejected and why. Omit the section if there are none.
 | [0004](0004-provide-audit-trail-mixins.md) | Provide audit trail mixins | accepted |
 | [0005](0005-support-soft-delete-via-mixin.md) | Support soft delete via a mixin | accepted |
 | [0006](0006-add-lifecycle-hooks.md) | Add lifecycle hooks | proposed |
-| [0007](0007-defer-larger-features-to-v0-3-0.md) | Defer larger features to v0.3.0 | accepted; change tracking superseded by 0011 |
+| [0007](0007-defer-larger-features-to-v0-3-0.md) | Defer larger features to v0.3.0 | accepted; change tracking superseded by 0011; caching superseded by 0012 |
 | [0008](0008-keep-v0-2-0-additive-and-backward-compatible.md) | Keep v0.2.0 additive and backward compatible | accepted |
 | [0009](0009-make-loguru-optional-and-use-uv.md) | Make loguru optional and replace requirements files with uv | accepted |
 | [0011](0011-add-opt-in-change-tracking.md) | Add opt-in change tracking in a separate history table | accepted |
+| [0012](0012-add-opt-in-read-caching.md) | Add opt-in read caching with a pluggable backend | accepted |
 
 ## Provenance
 

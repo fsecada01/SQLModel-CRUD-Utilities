@@ -8,6 +8,16 @@ from sqlmodel import SQLModel, delete, select, update
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.sql.expression import SelectOfScalar
 
+from sqlmodel_crud_utils.cache import (
+    a_invalidate_cache,
+    a_lookup,
+    a_store,
+    active_backend,
+    dump_row,
+    load_row,
+    make_key,
+    namespace_for,
+)
 from sqlmodel_crud_utils.tracking import history_select
 from sqlmodel_crud_utils.utils import (
     chunked,
@@ -91,6 +101,7 @@ async def get_one_or_create(
         [setattr(created, k, v) for k, v in kwargs.items()]
         session_inst.add(created)
         await session_inst.commit()
+        await a_invalidate_cache(model)
         return created, False
 
 
@@ -106,6 +117,7 @@ async def write_row(data_row: SQLModel, session_inst: AsyncSession):
     try:
         session_inst.add(data_row)
         await session_inst.commit()
+        await a_invalidate_cache(type(data_row))
 
         return True, data_row
     except Exception as e:
@@ -128,6 +140,8 @@ async def insert_data_rows(data_rows, session_inst: AsyncSession):
     try:
         session_inst.add_all(data_rows)
         await session_inst.commit()
+        for _model in {type(r) for r in data_rows}:
+            await a_invalidate_cache(_model)
 
         return True, data_rows
 
@@ -168,6 +182,8 @@ async def get_row(
     lazy: bool = False,
     lazy_load_keys: list[str] | None = None,
     pk_field: str = "id",
+    use_cache: bool = False,
+    cache_ttl: float | None = None,
 ):
     """
 
@@ -179,8 +195,24 @@ async def get_row(
     :param lazy:
     :param lazy_load_keys:
     :param pk_field:
+    :param use_cache: Read from and fill the cache set by ``configure_cache``
+        (ADR-0012). Bypassed with ``selectin`` or ``lazy``.
+    :param cache_ttl: Seconds the entry lives; backend default when None.
     :return:
     """
+    backend = active_backend(
+        use_cache
+        and not (selectin and select_in_keys)
+        and not (lazy and lazy_load_keys)
+    )
+    if backend:
+        namespace = namespace_for(model)
+        cache_key = make_key(
+            session_inst, model, "get_row", pk_field=pk_field, id=id_str
+        )
+        hit = await a_lookup(backend, namespace, cache_key)
+        if hit is not None:
+            return True, load_row(model, hit)
     stmnt = select(model).where(getattr(model, pk_field) == id_str)
     if selectin and select_in_keys:
         if isinstance(select_in_keys, list) is False:
@@ -201,6 +233,10 @@ async def get_row(
         success = False
     else:
         success = True
+        if backend:
+            await a_store(
+                backend, namespace, cache_key, dump_row(row), cache_ttl
+            )
 
     return success, row
 
@@ -216,6 +252,8 @@ async def get_rows(
     page: int = 1,
     text_field: str | None = None,
     stmnt: SelectOfScalar | None = None,
+    use_cache: bool = False,
+    cache_ttl: float | None = None,
     **kwargs,
 ):
     """
@@ -243,10 +281,33 @@ async def get_rows(
     :param page: 1-based page number; ignored when ``stmnt`` is supplied.
     :param text_field: Field matched with a text search from ``kwargs``.
     :param stmnt: Custom statement, executed as-is and never paginated.
+    :param use_cache: Read from and fill the cache set by ``configure_cache``
+        (ADR-0012). Bypassed with ``stmnt``, ``selectin`` or ``lazy``.
+    :param cache_ttl: Seconds the entry lives; backend default when None.
     :param kwargs: Filters and sort options for the built query.
     :return: ``(success, rows)`` where ``success`` is True if rows exist.
     """
     paginate = stmnt is None
+    backend = active_backend(
+        use_cache
+        and stmnt is None
+        and not (selectin and select_in_keys)
+        and not (lazy and lazy_load_keys)
+    )
+    if backend:
+        namespace = namespace_for(model)
+        cache_key = make_key(
+            session_inst,
+            model,
+            "get_rows",
+            page=page,
+            page_size=page_size,
+            text_field=text_field,
+            filters=repr(sorted(kwargs.items(), key=lambda kv: kv[0])),
+        )
+        hit = await a_lookup(backend, namespace, cache_key)
+        if hit is not None:
+            return True, [load_row(model, r) for r in hit["rows"]]
     # kwargs = {k: v for k, v in kwargs.items() if v}
     # Inside get_rows (sync and async versions)
 
@@ -425,6 +486,14 @@ async def get_rows(
     _result = await session_inst.exec(stmnt)
     results = _result.all()
     success = True if len(results) > 0 else False
+    if success and backend:
+        await a_store(
+            backend,
+            namespace,
+            cache_key,
+            {"rows": [dump_row(r) for r in results]},
+            cache_ttl,
+        )
 
     return success, results
 
@@ -498,6 +567,7 @@ async def delete_rows_within_id_list(
         logger.error(f"Failed to bulk delete rows: {type(e)}, {e}")
         raise
 
+    await a_invalidate_cache(model)
     return True, deleted
 
 
@@ -554,6 +624,7 @@ async def bulk_update_rows(
         logger.error(f"Failed to bulk update rows: {type(e)}, {e}")
         raise
 
+    await a_invalidate_cache(model)
     return True, updated
 
 
@@ -583,6 +654,7 @@ async def delete_row(
         try:
             await session_inst.delete(row)
             await session_inst.commit()
+            await a_invalidate_cache(model)
             success = True
         except Exception as e:
             logger.error(
@@ -636,6 +708,7 @@ async def bulk_upsert_mappings(
     ).all()
 
     await session_inst.commit()
+    await a_invalidate_cache(model)
 
     return True, results
 
@@ -667,6 +740,7 @@ async def update_row(
         try:
             session_inst.add(row)
             await session_inst.commit()
+            await a_invalidate_cache(model)
             success = True
         except Exception as e:
             await session_inst.rollback()

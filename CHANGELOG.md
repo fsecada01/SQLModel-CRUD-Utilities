@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Opt-in read caching (ADR-0012, #25): `get_row()` / `get_rows()` accept
+  `use_cache=True` and `cache_ttl` (sync and async). Nothing is cached until
+  `configure_cache(backend)` is called. Backends: `InMemoryCache` (default)
+  and `RedisCache` (new optional `cache` extra), or subclass `CacheBackend`.
+  Every write helper, including the bulk helpers, invalidates the written
+  model's entries after commit; `invalidate_cache()` covers writes made
+  outside the library. Cache hits are new session-detached instances, and
+  calls with `stmnt`, `selectin` or `lazy` bypass the cache.
 - Opt-in change tracking (ADR-0011, #24): `TrackChangesMixin`,
   `register_change_tracking()`, the `HISTORY_METADATA` / `change_history`
   table and `get_change_history()` / `a_get_change_history()`. Records ORM
