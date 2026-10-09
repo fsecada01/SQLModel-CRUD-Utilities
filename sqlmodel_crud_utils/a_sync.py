@@ -9,6 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.sql.expression import SelectOfScalar
 
 from sqlmodel_crud_utils.utils import (
+    QueryBuilderBase,
     chunked,
     get_sql_dialect_import,
     get_val,
@@ -676,3 +677,37 @@ async def update_row(
         return success, row
     else:
         return success, None
+
+
+class AsyncQueryBuilder(QueryBuilderBase):
+    """
+    Immutable fluent query builder bound to an ``AsyncSession`` (ADR-0010).
+
+    Chaining methods are synchronous; the terminals ``all``, ``first`` and
+    ``count`` are coroutines returning the library's ``(success, data)``
+    tuple where ``success`` is True when rows exist.
+    """
+
+    async def all(self):
+        """
+        :return: ``(success, rows)``; ``rows`` is an empty list when nothing
+            matched.
+        """
+        rows = (await self._session.exec(self._stmnt)).all()
+        return len(rows) > 0, rows
+
+    async def first(self):
+        """
+        :return: ``(success, row)``; ``row`` is ``None`` when nothing matched.
+        """
+        row = (await self._session.exec(self._first_stmnt())).first()
+        return row is not None, row
+
+    async def count(self):
+        """
+        Count rows of the composed statement, honoring limit and offset.
+
+        :return: ``(success, count)`` with ``success`` True when count > 0.
+        """
+        total = (await self._session.exec(self._count_stmnt())).one()
+        return total > 0, total

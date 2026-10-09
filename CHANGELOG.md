@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Fluent query builder: `QueryBuilder` (sync) and `AsyncQueryBuilder`
+  (async), exported from the package root, with `where`, `order_by`,
+  `limit`, `offset` and the terminals `all`, `first` and `count`. Builders
+  are immutable and compose onto an optional caller `stmnt`, keeping its
+  loader options. Opt-in and backward compatible; supersedes ADR-0007 for
+  this item (ADR-0010, #23).
+
 ## [0.3.0] - 2026-10-08
 
 ### Added
