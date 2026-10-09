@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Opt-in change tracking (ADR-0011, #24): `TrackChangesMixin`,
+  `register_change_tracking()`, the `HISTORY_METADATA` / `change_history`
+  table and `get_change_history()` / `a_get_change_history()`. Records ORM
+  inserts, updates and deletes with old and new values. The bulk helpers use
+  Core statements and are not tracked. The history table is not created
+  unless you call `HISTORY_METADATA.create_all()`.
+
 ## [0.3.0] - 2026-10-08
 
 ### Added

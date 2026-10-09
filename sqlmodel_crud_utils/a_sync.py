@@ -8,6 +8,7 @@ from sqlmodel import SQLModel, delete, select, update
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.sql.expression import SelectOfScalar
 
+from sqlmodel_crud_utils.tracking import change_history_table
 from sqlmodel_crud_utils.utils import (
     chunked,
     get_sql_dialect_import,
@@ -676,3 +677,38 @@ async def update_row(
         return success, row
     else:
         return success, None
+
+
+async def get_change_history(
+    session_inst: AsyncSession,
+    model: type[SQLModel],
+    id_str: int | str,
+):
+    """
+    Return the recorded change history of one row, oldest first.
+
+    Requires ``register_change_tracking()`` and a model inheriting
+    ``TrackChangesMixin`` (ADR-0011). Changes made by the bulk helpers are not
+    recorded, so they do not appear here.
+
+    :param session_inst: AsyncSession
+    :param model: type[SQLModel]
+    :param id_str: primary key value of the row
+    :return: Tuple[bool, list[dict]]
+    """
+    stmnt = (
+        select(change_history_table)
+        .where(change_history_table.c.table_name == model.__tablename__)
+        .where(change_history_table.c.row_pk == str(id_str))
+        .order_by(change_history_table.c.id)
+    )
+    try:
+        conn = await session_inst.connection()
+        result = await conn.execute(stmnt)
+        return True, [dict(r) for r in result.mappings().all()]
+    except Exception as e:
+        logger.error(
+            f"Reading change history failed. See error message: "
+            f"{type(e), e, e.args}"
+        )
+        return False, []
