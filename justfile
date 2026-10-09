@@ -143,6 +143,14 @@ publish-test: build-check
     twine upload --repository testpypi dist/*
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# Architecture Decision Records
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Create the next numbered ADR from the template (e.g., just adr "Use X")
+adr TITLE:
+    uv run --no-project python scripts/new_adr.py "{{TITLE}}"
+
+# ═══════════════════════════════════════════════════════════════════════════════
 # Git Workflow
 # ═══════════════════════════════════════════════════════════════════════════════
 
