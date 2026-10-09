@@ -743,7 +743,7 @@ class TestPublicAPI:
         """Test that __version__ is accessible."""
         assert __version__ is not None
         assert isinstance(__version__, str)
-        assert __version__ == "0.2.0"
+        assert __version__ == "0.3.0"
 
     def test_exceptions_can_be_imported_from_root(self):
         """Test that exceptions can be imported from root package."""

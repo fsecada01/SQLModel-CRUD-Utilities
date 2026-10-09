@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-08
+
+### Added
+- `delete_rows_within_id_list()` and `bulk_update_rows()` (sync and async,
+  `a_` exports): chunked, single-transaction bulk helpers keyed on a
+  validated primary-key column (#12).
+- `TimestampMixin`: `created_at`/`updated_at` columns built per model with
+  `declared_attr` and `server_default` (#10).
+- Architecture Decision Records under `docs/adr/` and a `just adr` helper.
+
 ### Changed
 - `get_row()` (sync) now orders its optional parameters as
   `selectin, select_in_keys, lazy, lazy_load_keys, pk_field`, matching
@@ -15,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `select_in_keys`. Keyword callers are unaffected.
 
 ### Fixed
+- `bulk_upsert_mappings()` / `a_bulk_upsert_mappings()` now run a single
+  `RETURNING` statement and read rows before committing, fixing SQLite (#13).
+- Package URLs in `pyproject.toml` pointed at the wrong repository (#6).
 - `get_rows()` / `a_get_rows()` no longer apply `.offset()/.limit()` to a
   caller-supplied `stmnt`, which was silently truncated to `page_size` (100)
   rows (#11). Behavior change: a custom `stmnt` now runs exactly as given and
@@ -79,6 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code quality tools: `black`, `isort`, `ruff`
 - Pre-commit hooks configuration
 
-[unreleased]: https://github.com/fsecada01/sqlmodel_crud_utils/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/fsecada01/sqlmodel_crud_utils/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/fsecada01/sqlmodel_crud_utils/releases/tag/v0.1.0
+[unreleased]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.2.1...v0.3.0
+[0.2.0]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/releases/tag/v0.1.0
