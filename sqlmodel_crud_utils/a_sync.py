@@ -9,7 +9,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.sql.expression import SelectOfScalar
 
 from sqlmodel_crud_utils.cache import (
-    a_invalidate_cache,
+    a_invalidate_written,
     a_lookup,
     a_store,
     active_backend,
@@ -102,7 +102,7 @@ async def get_one_or_create(
         [setattr(created, k, v) for k, v in kwargs.items()]
         session_inst.add(created)
         await session_inst.commit()
-        await a_invalidate_cache(model)
+        await a_invalidate_written(session_inst, model)
         return created, False
 
 
@@ -118,7 +118,7 @@ async def write_row(data_row: SQLModel, session_inst: AsyncSession):
     try:
         session_inst.add(data_row)
         await session_inst.commit()
-        await a_invalidate_cache(type(data_row))
+        await a_invalidate_written(session_inst, type(data_row))
 
         return True, data_row
     except Exception as e:
@@ -141,8 +141,7 @@ async def insert_data_rows(data_rows, session_inst: AsyncSession):
     try:
         session_inst.add_all(data_rows)
         await session_inst.commit()
-        for _model in {type(r) for r in data_rows}:
-            await a_invalidate_cache(_model)
+        await a_invalidate_written(session_inst, *{type(r) for r in data_rows})
 
         return True, data_rows
 
@@ -568,7 +567,7 @@ async def delete_rows_within_id_list(
         logger.error(f"Failed to bulk delete rows: {type(e)}, {e}")
         raise
 
-    await a_invalidate_cache(model)
+    await a_invalidate_written(session_inst, model)
     return True, deleted
 
 
@@ -625,7 +624,7 @@ async def bulk_update_rows(
         logger.error(f"Failed to bulk update rows: {type(e)}, {e}")
         raise
 
-    await a_invalidate_cache(model)
+    await a_invalidate_written(session_inst, model)
     return True, updated
 
 
@@ -655,7 +654,7 @@ async def delete_row(
         try:
             await session_inst.delete(row)
             await session_inst.commit()
-            await a_invalidate_cache(model)
+            await a_invalidate_written(session_inst, model)
             success = True
         except Exception as e:
             logger.error(
@@ -709,7 +708,7 @@ async def bulk_upsert_mappings(
     ).all()
 
     await session_inst.commit()
-    await a_invalidate_cache(model)
+    await a_invalidate_written(session_inst, model)
 
     return True, results
 
@@ -741,7 +740,7 @@ async def update_row(
         try:
             session_inst.add(row)
             await session_inst.commit()
-            await a_invalidate_cache(model)
+            await a_invalidate_written(session_inst, model)
             success = True
         except Exception as e:
             await session_inst.rollback()

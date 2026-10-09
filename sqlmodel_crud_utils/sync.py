@@ -11,7 +11,7 @@ from sqlmodel_crud_utils.cache import (
     active_backend,
     dump_row,
     dump_rows,
-    invalidate_cache,
+    invalidate_written,
     load_row,
     lookup,
     make_key,
@@ -101,7 +101,7 @@ def get_one_or_create(
         [setattr(created, k, v) for k, v in kwargs.items()]
         session_inst.add(created)
         session_inst.commit()
-        invalidate_cache(model)
+        invalidate_written(session_inst, model)
         return created, False
 
 
@@ -117,7 +117,7 @@ def write_row(data_row: SQLModel, session_inst: Session):
     try:
         session_inst.add(data_row)
         session_inst.commit()
-        invalidate_cache(type(data_row))
+        invalidate_written(session_inst, type(data_row))
 
         return True, data_row
     except Exception as e:
@@ -140,8 +140,7 @@ def insert_data_rows(data_rows, session_inst: Session):
     try:
         session_inst.add_all(data_rows)
         session_inst.commit()
-        for _model in {type(r) for r in data_rows}:
-            invalidate_cache(_model)
+        invalidate_written(session_inst, *{type(r) for r in data_rows})
 
         return True, data_rows
 
@@ -572,7 +571,7 @@ def delete_rows_within_id_list(
         logger.error(f"Failed to bulk delete rows: {type(e)}, {e}")
         raise
 
-    invalidate_cache(model)
+    invalidate_written(session_inst, model)
     return True, deleted
 
 
@@ -629,7 +628,7 @@ def bulk_update_rows(
         logger.error(f"Failed to bulk update rows: {type(e)}, {e}")
         raise
 
-    invalidate_cache(model)
+    invalidate_written(session_inst, model)
     return True, updated
 
 
@@ -659,7 +658,7 @@ def delete_row(
         try:
             session_inst.delete(row)
             session_inst.commit()
-            invalidate_cache(model)
+            invalidate_written(session_inst, model)
             success = True
         except Exception as e:
             logger.error(
@@ -713,7 +712,7 @@ def bulk_upsert_mappings(
     ).all()
 
     session_inst.commit()
-    invalidate_cache(model)
+    invalidate_written(session_inst, model)
 
     return True, results
 
@@ -745,7 +744,7 @@ def update_row(
         try:
             session_inst.add(row)
             session_inst.commit()
-            invalidate_cache(model)
+            invalidate_written(session_inst, model)
             success = True
         except Exception as e:
             session_inst.rollback()

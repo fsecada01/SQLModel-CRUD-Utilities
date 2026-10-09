@@ -19,6 +19,9 @@ import time
 from abc import ABC, abstractmethod
 from typing import Any
 
+from pydantic_core import to_jsonable_python
+from sqlalchemy import event
+from sqlalchemy.orm import Session as _SASession
 from sqlmodel import SQLModel
 
 from sqlmodel_crud_utils.utils import logger
@@ -186,6 +189,8 @@ def configure_cache(backend: CacheBackend | None) -> None:
     """
     global _backend
     _backend = backend
+    if backend is not None:
+        _install_flush_listeners()
 
 
 def get_cache() -> CacheBackend | None:
@@ -225,9 +230,16 @@ def make_key(session: Any, model: type[SQLModel], op: str, **parts) -> str:
 
 def dump_row(row: SQLModel) -> dict | None:
     """Serialize a row to a JSON-compatible dict, or ``None`` if it cannot be
-    (for example non-UTF-8 ``bytes``), in which case it is not cached."""
+    (for example non-UTF-8 ``bytes``), in which case it is not cached.
+
+    Fields declared with ``exclude=True`` are added back, otherwise a hit
+    would rebuild them as their defaults."""
     try:
-        return row.model_dump(mode="json")
+        data = row.model_dump(mode="json")
+        for name, field in type(row).model_fields.items():
+            if field.exclude:
+                data[name] = to_jsonable_python(getattr(row, name))
+        return data
     except Exception as e:
         logger.warning(f"Row not cacheable: {type(e), e}")
         return None
@@ -317,3 +329,57 @@ async def a_invalidate_cache(model: type[SQLModel] | None = None) -> None:
     if backend is None:
         return
     await a_call(backend, invalidate_cache, model)
+
+
+_TOUCHED = "sqlmodel_crud_utils.cache.touched"
+
+
+def _record_flush(session, flush_context) -> None:
+    """``after_flush`` listener noting every model the flush wrote.
+
+    ORM cascades (``save-update``, ``delete``) and objects added directly to
+    the session reach models the helper was not called with; recording them
+    lets the helper invalidate those namespaces too.
+    """
+    if _backend is None:
+        return
+    touched = session.info.setdefault(_TOUCHED, set())
+    for obj in (*session.new, *session.dirty, *session.deleted):
+        touched.add(type(obj))
+
+
+def _forget_flush(session) -> None:
+    """``after_rollback`` listener dropping models of a discarded flush."""
+    session.info.pop(_TOUCHED, None)
+
+
+def _install_flush_listeners() -> None:
+    """Idempotently attach the flush and rollback listeners to ``Session``."""
+    if not event.contains(_SASession, "after_flush", _record_flush):
+        event.listen(_SASession, "after_flush", _record_flush)
+    if not event.contains(_SASession, "after_rollback", _forget_flush):
+        event.listen(_SASession, "after_rollback", _forget_flush)
+
+
+def written_models(session: Any, *models: type[SQLModel]) -> set:
+    """Pop and return the models flushed through ``session`` plus ``models``.
+
+    Call after a successful commit; the record is cleared so it covers
+    exactly one commit.
+    """
+    sync_session = getattr(session, "sync_session", session)
+    found = set(sync_session.info.pop(_TOUCHED, ()))
+    found.update(models)
+    return found
+
+
+def invalidate_written(session: Any, *models: type[SQLModel]) -> None:
+    """Invalidate ``models`` and every model flushed through ``session``."""
+    for model in written_models(session, *models):
+        invalidate_cache(model)
+
+
+async def a_invalidate_written(session: Any, *models: type[SQLModel]) -> None:
+    """Async ``invalidate_written`` keeping blocking I/O off the loop."""
+    for model in written_models(session, *models):
+        await a_invalidate_cache(model)

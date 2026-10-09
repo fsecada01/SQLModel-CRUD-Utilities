@@ -20,7 +20,7 @@ This supersedes ADR-0007 for caching only. Build it, opt-in, with no new require
 - Only `get_row` and `get_rows`, and only per call with `use_cache=True` (default `False`). Optional `cache_ttl` overrides the backend default.
 - Only successful, non-empty results. A miss (not found, empty page) is never cached.
 - Only reads of the model's own columns. Calls with `selectin`/`lazy` loading or a caller-supplied `stmnt` bypass the cache, because relationships cannot be stored without a session and a custom statement has no reliable key.
-- Stored values are `model_dump(mode="json")` dicts. A hit rebuilds new transient (session-detached) model instances with `model_validate`. They are not tracked by the session and are not the same objects a database read would return; to modify a row use `update_row`, which re-reads it. Models whose columns do not round-trip through JSON should not be cached.
+- Stored values are `model_dump(mode="json")` dicts, with `exclude=True` fields added back so a hit does not rebuild them as defaults. A hit rebuilds new transient (session-detached) model instances with `model_validate`. They are not tracked by the session and are not the same objects a database read would return; to modify a row use `update_row`, which re-reads it. Models whose columns do not round-trip through JSON should not be cached.
 
 ### Cache keys
 Namespace is the model's table name qualified by schema (`schema.table`). The key is the operation name plus, for `get_row`, the primary key field and value, and for `get_rows`, the page, page size, text field and the sorted `repr` of the filter kwargs, plus the session's bind URL with the password hidden. The bind URL keeps two databases that share a table name apart. Keys are hashed to a fixed-length string.
@@ -28,6 +28,7 @@ Namespace is the model's table name qualified by schema (`schema.table`). The ke
 ### Invalidation
 Invalidation is per namespace (whole table): any write to a model drops every cached read of that model. This is coarse but cannot serve stale rows and needs no query analysis.
 - Done explicitly, after a successful commit, by `write_row`, `insert_data_rows`, `update_row`, `delete_row`, `get_one_or_create` (when it creates) and by all three bulk helpers, `bulk_upsert_mappings`, `bulk_update_rows` and `delete_rows_within_id_list`. A failed or rolled-back write invalidates nothing.
+- Models written through ORM cascades (`save-update`, `delete`) or added directly to the session before the helper's commit are invalidated too: an `after_flush` listener, installed by `configure_cache`, records every model a flush touches, and the helper invalidates them all after a successful commit. A rollback discards the record.
 - Public `invalidate_cache(model=None)` drops one model's entries, or everything when `model` is `None`. Callers use it after raw SQL, direct `session.add`/`session.delete`, writes from other processes, or database-side cascades, none of which the library can see.
 - Every entry also expires after its TTL (default 60 seconds), which bounds staleness for anything missed.
 
