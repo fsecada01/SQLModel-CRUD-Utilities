@@ -12,7 +12,7 @@ This supersedes ADR-0007 for change tracking only. Build it, opt-in, as a separa
 - `AuditMixin` / `TimestampMixin` answer "when was this row last touched and by whom" with columns on the row itself. They keep no old values and cannot show history. They are unchanged; change tracking complements them and does not depend on them.
 - A model opts in by inheriting `TrackChangesMixin` (a plain marker class with no columns, so no schema change to tracked tables). `__track_exclude__` lists columns to leave out of the record (for example secrets).
 - `register_change_tracking()` installs one SQLAlchemy `after_flush` listener on `sqlalchemy.orm.Session`. `AsyncSession` wraps a sync `Session`, so one listener covers both. Nothing is recorded until it is called.
-- Records go into a `change_history` table defined on its own `MetaData` (`HISTORY_METADATA`), not `SQLModel.metadata`, so importing the library never adds a table to a user's `create_all` or Alembic autogenerate. Users create it explicitly with `HISTORY_METADATA.create_all(engine)`. Each record holds table name, primary key (as text), operation (`insert`/`update`/`delete`), a JSON map of column to `[old, new]`, `changed_at`, and `changed_by` taken from `session.info["changed_by"]` when set. Rows are written with Core inserts on the session's own connection, so the history commits or rolls back with the change it describes.
+- Records go into a `change_history` table defined on its own `MetaData` (`HISTORY_METADATA`), not `SQLModel.metadata`, so importing the library never adds a table to a user's `create_all` or Alembic autogenerate. Users create it explicitly with `HISTORY_METADATA.create_all(engine)`. Each record holds table name, table schema, primary key (as text; a composite key is comma-joined and passed to `get_change_history` as a tuple), operation (`insert`/`update`/`delete`), a JSON map of column to `[old, new]`, `changed_at`, and `changed_by` taken from `session.info["changed_by"]` when set (converted to text and cut to 100 characters). Rows are written with Core inserts on the connection the session uses for the tracked model's bind, so the history commits or rolls back with the change it describes.
 - `get_change_history(session, model, pk_value)` and `a_get_change_history` read the history, newest last, returning the usual `(success, data)` tuple. No new runtime dependency.
 
 ### What is tracked
@@ -26,7 +26,7 @@ Changes made through the ORM unit of work to instances of opted-in models: `writ
 ## Consequences
 - Phase #25 (caching) must not assume change tracking is a complete change feed: bulk helpers produce no history rows and no ORM events, so cache invalidation has to be done explicitly by those helpers rather than by listening to tracking.
 - The history table grows without bound; pruning is the user's responsibility.
-- Old values come from SQLAlchemy attribute history, so they are only accurate for attributes loaded before modification.
+- Old values come from SQLAlchemy attribute history. When an attribute was expired before it was changed, the stored value is read once before the flush so the old value is not lost.
 - Revisit if users need bulk-helper history; that would be a new ADR and an opt-in parameter.
 
 ## Alternatives considered

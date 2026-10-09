@@ -7,7 +7,7 @@ from sqlalchemy.orm import lazyload, selectinload
 from sqlmodel import Session, SQLModel, delete, select, update
 from sqlmodel.sql.expression import SelectOfScalar
 
-from sqlmodel_crud_utils.tracking import change_history_table
+from sqlmodel_crud_utils.tracking import history_select
 from sqlmodel_crud_utils.utils import (
     chunked,
     get_sql_dialect_import,
@@ -699,21 +699,20 @@ def get_change_history(
 
     :param session_inst: Session
     :param model: type[SQLModel]
-    :param id_str: primary key value of the row
+    :param id_str: primary key value of the row; a tuple or list in
+        column order for a composite key
     :return: Tuple[bool, list[dict]]
     """
-    stmnt = (
-        select(change_history_table)
-        .where(change_history_table.c.table_name == model.__tablename__)
-        .where(change_history_table.c.row_pk == str(id_str))
-        .order_by(change_history_table.c.id)
-    )
+    stmnt = history_select(model, id_str)
     try:
-        result = session_inst.connection().execute(stmnt)
+        result = session_inst.connection(
+            bind_arguments={"mapper": model}
+        ).execute(stmnt)
         return True, [dict(r) for r in result.mappings().all()]
     except Exception as e:
         logger.error(
             f"Reading change history failed. See error message: "
             f"{type(e), e, e.args}"
         )
+        session_inst.rollback()
         return False, []
