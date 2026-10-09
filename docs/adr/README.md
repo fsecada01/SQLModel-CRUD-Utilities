@@ -35,9 +35,10 @@ Options rejected and why. Omit the section if there are none.
 | [0004](0004-provide-audit-trail-mixins.md) | Provide audit trail mixins | accepted |
 | [0005](0005-support-soft-delete-via-mixin.md) | Support soft delete via a mixin | accepted |
 | [0006](0006-add-lifecycle-hooks.md) | Add lifecycle hooks | proposed |
-| [0007](0007-defer-larger-features-to-v0-3-0.md) | Defer larger features to v0.3.0 | accepted (GraphQL item superseded by 0014) |
+| [0007](0007-defer-larger-features-to-v0-3-0.md) | Defer larger features to v0.3.0 | accepted (query builder item superseded by 0010; GraphQL item superseded by 0014) |
 | [0008](0008-keep-v0-2-0-additive-and-backward-compatible.md) | Keep v0.2.0 additive and backward compatible | accepted |
 | [0009](0009-make-loguru-optional-and-use-uv.md) | Make loguru optional and replace requirements files with uv | accepted |
+| [0010](0010-add-fluent-query-builder.md) | Add an opt-in fluent query builder | accepted |
 | [0014](0014-do-not-build-graphql-support.md) | Do not build GraphQL support | accepted |
 
 ## Provenance
