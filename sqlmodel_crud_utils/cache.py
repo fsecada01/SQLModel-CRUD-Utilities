@@ -203,21 +203,40 @@ def make_key(session: Any, model: type[SQLModel], op: str, **parts) -> str:
     """Build a fixed-length key from the operation, arguments and database.
 
     The bind URL (password hidden) keeps same-named tables in different
-    databases apart.
+    databases apart. In-memory SQLite has no distinguishing URL, so the
+    engine identity is added for it.
     """
     sync_session = getattr(session, "sync_session", session)
     try:
         bind = sync_session.get_bind(mapper=model.__mapper__)
-        target = bind.engine.url.render_as_string(hide_password=True)
+        url = bind.engine.url
+        target = url.render_as_string(hide_password=True)
+        if url.get_backend_name() == "sqlite" and url.database in (
+            None,
+            "",
+            ":memory:",
+        ):
+            target += f"#{id(bind.engine)}"
     except Exception:
         target = "unknown"
     raw = repr((op, target, sorted(parts.items(), key=lambda kv: kv[0])))
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-def dump_row(row: SQLModel) -> dict:
-    """Serialize a row to a JSON-compatible dict."""
-    return row.model_dump(mode="json")
+def dump_row(row: SQLModel) -> dict | None:
+    """Serialize a row to a JSON-compatible dict, or ``None`` if it cannot be
+    (for example non-UTF-8 ``bytes``), in which case it is not cached."""
+    try:
+        return row.model_dump(mode="json")
+    except Exception as e:
+        logger.warning(f"Row not cacheable: {type(e), e}")
+        return None
+
+
+def dump_rows(rows: list[SQLModel]) -> dict | None:
+    """Serialize a result list, or ``None`` if any row cannot be cached."""
+    dumped = [dump_row(r) for r in rows]
+    return None if None in dumped else {"rows": dumped}
 
 
 def load_row(model: type[SQLModel], data: dict) -> SQLModel:
@@ -265,7 +284,10 @@ def store(
     value: Any,
     ttl: float | None,
 ) -> None:
-    """Write an entry; a failing backend is logged and ignored."""
+    """Write an entry; a failing backend is logged and ignored. A ``None``
+    value (an uncacheable result) is skipped."""
+    if value is None:
+        return
     try:
         backend.set(namespace, key, value, ttl)
     except Exception as e:

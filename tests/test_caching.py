@@ -216,6 +216,19 @@ def test_different_databases_do_not_share_entries(tmp_path, sync_env):
     assert row.name == "other-db"
 
 
+def test_in_memory_sqlite_engines_do_not_share_entries():
+    rows = []
+    for label in ("A", "B"):
+        engine = create_engine("sqlite://")
+        SQLModel.metadata.create_all(engine)
+        with Session(engine) as other:
+            other.add(MockModel(id=1, name=label))
+            other.commit()
+            rows.append(scu.get_row(1, other, MockModel, use_cache=True)[1])
+        engine.dispose()
+    assert [r.name for r in rows] == ["A", "B"]
+
+
 def test_no_backend_use_cache_is_noop(sync_env):
     configure_cache(None)
     sess, counter = sync_env
@@ -364,3 +377,24 @@ async def test_async_blocking_backend_runs_off_loop(async_env):
     await scu.a_get_row(1, sess, MockModel, use_cache=True)
     await scu.a_get_row(1, sess, MockModel, use_cache=True)
     assert counter.selects == 1
+
+
+def test_uncacheable_row_is_returned_not_raised(tmp_path):
+    from typing import Optional
+
+    from sqlmodel import Field
+
+    class Blob(SQLModel, table=True):
+        __tablename__ = "cache_blob"
+        id: Optional[int] = Field(default=None, primary_key=True)
+        data: bytes = b""
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'b.sqlite'}")
+    SQLModel.metadata.create_all(engine, tables=[Blob.__table__])
+    with Session(engine) as sess:
+        sess.add(Blob(id=1, data=bytes([255, 254])))
+        sess.commit()
+        ok, row = scu.get_row(1, sess, Blob, use_cache=True)
+        ok2, rows = scu.get_rows(sess, Blob, use_cache=True)
+    engine.dispose()
+    assert ok and ok2 and row.data == bytes([255, 254]) and len(rows) == 1

@@ -14,6 +14,7 @@ from sqlmodel_crud_utils.cache import (
     a_store,
     active_backend,
     dump_row,
+    dump_rows,
     load_row,
     make_key,
     namespace_for,
@@ -491,7 +492,7 @@ async def get_rows(
             backend,
             namespace,
             cache_key,
-            {"rows": [dump_row(r) for r in results]},
+            dump_rows(results),
             cache_ttl,
         )
 

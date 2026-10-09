@@ -10,6 +10,7 @@ from sqlmodel.sql.expression import SelectOfScalar
 from sqlmodel_crud_utils.cache import (
     active_backend,
     dump_row,
+    dump_rows,
     invalidate_cache,
     load_row,
     lookup,
@@ -491,7 +492,7 @@ def get_rows(
             backend,
             namespace,
             cache_key,
-            {"rows": [dump_row(r) for r in results]},
+            dump_rows(results),
             cache_ttl,
         )
 
