@@ -52,6 +52,7 @@ def sync_env(tmp_path):
             [MockModel(id=i, name=f"n{i}", value=i) for i in range(1, 6)]
         )
         sess.commit()
+        sess.info.pop("sqlmodel_crud_utils.cache.touched", None)
         event.listen(engine, "before_cursor_execute", counter)
         yield sess, counter
     engine.dispose()

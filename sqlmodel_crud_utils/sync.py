@@ -13,6 +13,7 @@ from sqlmodel_crud_utils.cache import (
     dump_rows,
     invalidate_written,
     load_row,
+    load_rows,
     lookup,
     make_key,
     namespace_for,
@@ -213,8 +214,9 @@ def get_row(
             session_inst, model, "get_row", pk_field=pk_field, id=id_str
         )
         hit = lookup(backend, namespace, cache_key)
-        if hit is not None:
-            return True, load_row(model, hit)
+        row = load_row(model, hit) if hit is not None else None
+        if row is not None:
+            return True, row
     stmnt = select(model).where(getattr(model, pk_field) == id_str)
     if selectin and select_in_keys:
         if isinstance(select_in_keys, list) is False:
@@ -306,8 +308,9 @@ def get_rows(
             filters=repr(sorted(kwargs.items(), key=lambda kv: kv[0])),
         )
         hit = lookup(backend, namespace, cache_key)
-        if hit is not None:
-            return True, [load_row(model, r) for r in hit["rows"]]
+        rows = load_rows(model, hit) if hit is not None else None
+        if rows is not None:
+            return True, rows
     # Inside get_rows (sync and async versions)
 
     # ... existing code ...

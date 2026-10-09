@@ -36,6 +36,16 @@ class CHidden(SQLModel, table=True):
     token: str = Field(default="", exclude=True)
 
 
+class CCounter(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    n: int = Field(default=0)
+
+
+class CBounded(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    n: int = Field(default=0, ge=0)
+
+
 @pytest.fixture(autouse=True)
 def backend():
     configure_cache(InMemoryCache(default_ttl=60))
@@ -122,3 +132,51 @@ async def test_async_excluded_field_survives_a_cache_hit(a_sess):
     await A.get_row(1, a_sess, CHidden, use_cache=True)
     hit = (await A.get_row(1, a_sess, CHidden, use_cache=True))[1]
     assert hit.token == "hunter2"
+
+
+def test_rollback_after_cached_read_of_uncommitted_data(sess):
+    S.write_row(CCounter(id=1, n=1), sess)
+    b = sess.get(CCounter, 1)
+    b.n = 99
+    assert S.get_row(1, sess, CCounter, use_cache=True)[1].n == 99
+    sess.rollback()
+    assert S.get_row(1, sess, CCounter, use_cache=True)[1].n == 1
+
+
+def test_failed_update_commit_does_not_leave_uncommitted_read_cached(sess):
+    S.write_row(CCounter(id=1, n=1), sess)
+    sess.get(CCounter, 1).n = 99
+    assert S.get_row(1, sess, CCounter, use_cache=True)[1].n == 99
+    ok, _ = S.update_row(1, {"n": None}, sess, CCounter)
+    assert not ok
+    assert S.get_row(1, sess, CCounter, use_cache=True)[1].n == 1
+
+
+def test_rollback_without_backend_is_a_no_op(sess):
+    configure_cache(None)
+    S.write_row(CCounter(id=1, n=1), sess)
+    sess.get(CCounter, 1).n = 99
+    sess.flush()
+    sess.rollback()
+    assert sess.get(CCounter, 1).n == 1
+
+
+@pytest.mark.asyncio
+async def test_async_rollback_after_cached_read_of_uncommitted_data(a_sess):
+    await A.write_row(CCounter(id=1, n=1), a_sess)
+    b = await a_sess.get(CCounter, 1)
+    b.n = 99
+    assert (await A.get_row(1, a_sess, CCounter, use_cache=True))[1].n == 99
+    await a_sess.rollback()
+    assert (await A.get_row(1, a_sess, CCounter, use_cache=True))[1].n == 1
+
+
+def test_unrebuildable_hit_falls_back_to_a_miss(sess):
+    sess.add(CBounded(id=1, n=-5))
+    sess.commit()
+    assert S.get_row(1, sess, CBounded, use_cache=True)[1].n == -5
+    ok, row = S.get_row(1, sess, CBounded, use_cache=True)
+    assert ok and row.n == -5
+    ok, rows = S.get_rows(sess, CBounded, use_cache=True)
+    ok, rows = S.get_rows(sess, CBounded, use_cache=True)
+    assert ok and rows[0].n == -5

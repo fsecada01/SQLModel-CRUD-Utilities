@@ -251,9 +251,24 @@ def dump_rows(rows: list[SQLModel]) -> dict | None:
     return None if None in dumped else {"rows": dumped}
 
 
-def load_row(model: type[SQLModel], data: dict) -> SQLModel:
-    """Rebuild a transient (session-detached) instance from a dict."""
-    return model.model_validate(data)
+def load_row(model: type[SQLModel], data: dict) -> SQLModel | None:
+    """Rebuild a transient (session-detached) instance from a dict.
+
+    A cached entry that no longer validates (for example a stored value that
+    violates a ``Field`` constraint the database does not enforce) returns
+    ``None`` so the caller treats the hit as a miss.
+    """
+    try:
+        return model.model_validate(data)
+    except Exception as e:
+        logger.error(f"Cache entry could not be rebuilt: {type(e), e}")
+        return None
+
+
+def load_rows(model: type[SQLModel], data: dict) -> list[SQLModel] | None:
+    """Rebuild a cached result list, or ``None`` if any row cannot be."""
+    rows = [load_row(model, r) for r in data["rows"]]
+    return None if None in rows else rows
 
 
 def invalidate_cache(model: type[SQLModel] | None = None) -> None:
@@ -349,8 +364,16 @@ def _record_flush(session, flush_context) -> None:
 
 
 def _forget_flush(session) -> None:
-    """``after_rollback`` listener dropping models of a discarded flush."""
-    session.info.pop(_TOUCHED, None)
+    """``after_rollback`` listener for a real (database) rollback.
+
+    Reads inside the transaction may have cached the rolled-back state after
+    an autoflush, so every model recorded as touched is invalidated before the
+    record is cleared. Does nothing when no backend is configured.
+    """
+    touched = session.info.pop(_TOUCHED, None)
+    if touched and _backend is not None:
+        for model in touched:
+            invalidate_cache(model)
 
 
 def _install_flush_listeners() -> None:
