@@ -7,6 +7,18 @@ from sqlalchemy.orm import lazyload, selectinload
 from sqlmodel import Session, SQLModel, delete, select, update
 from sqlmodel.sql.expression import SelectOfScalar
 
+from sqlmodel_crud_utils.cache import (
+    active_backend,
+    dump_row,
+    dump_rows,
+    invalidate_written,
+    load_row,
+    load_rows,
+    lookup,
+    make_key,
+    namespace_for,
+    store,
+)
 from sqlmodel_crud_utils.tracking import history_select
 from sqlmodel_crud_utils.utils import (
     chunked,
@@ -90,6 +102,7 @@ def get_one_or_create(
         [setattr(created, k, v) for k, v in kwargs.items()]
         session_inst.add(created)
         session_inst.commit()
+        invalidate_written(session_inst, model)
         return created, False
 
 
@@ -105,6 +118,7 @@ def write_row(data_row: SQLModel, session_inst: Session):
     try:
         session_inst.add(data_row)
         session_inst.commit()
+        invalidate_written(session_inst, type(data_row))
 
         return True, data_row
     except Exception as e:
@@ -127,6 +141,7 @@ def insert_data_rows(data_rows, session_inst: Session):
     try:
         session_inst.add_all(data_rows)
         session_inst.commit()
+        invalidate_written(session_inst, *{type(r) for r in data_rows})
 
         return True, data_rows
 
@@ -165,6 +180,8 @@ def get_row(
     lazy: bool = False,
     lazy_load_keys: list[str] | None = None,
     pk_field: str = "id",
+    use_cache: bool = False,
+    cache_ttl: float | None = None,
 ):
     """
     Fetch a single row by primary key.
@@ -181,8 +198,25 @@ def get_row(
     :param lazy: Apply ``lazyload`` for ``lazy_load_keys``.
     :param lazy_load_keys: Relationship name(s) to lazy load.
     :param pk_field: Primary key field name (default: "id").
+    :param use_cache: Read from and fill the cache set by ``configure_cache``
+        (ADR-0012). Bypassed with ``selectin`` or ``lazy``.
+    :param cache_ttl: Seconds the entry lives; backend default when None.
     :return: Tuple[bool, SQLModel | None]: Success flag and the row, if found.
     """
+    backend = active_backend(
+        use_cache
+        and not (selectin and select_in_keys)
+        and not (lazy and lazy_load_keys)
+    )
+    if backend:
+        namespace = namespace_for(model)
+        cache_key = make_key(
+            session_inst, model, "get_row", pk_field=pk_field, id=id_str
+        )
+        hit = lookup(backend, namespace, cache_key)
+        row = load_row(model, hit) if hit is not None else None
+        if row is not None:
+            return True, row
     stmnt = select(model).where(getattr(model, pk_field) == id_str)
     if selectin and select_in_keys:
         if isinstance(select_in_keys, list) is False:
@@ -203,6 +237,8 @@ def get_row(
         success = False
     else:
         success = True
+        if backend:
+            store(backend, namespace, cache_key, dump_row(row), cache_ttl)
 
     return success, row
 
@@ -218,6 +254,8 @@ def get_rows(
     page: int = 1,
     text_field: str | None = None,
     stmnt: SelectOfScalar | None = None,
+    use_cache: bool = False,
+    cache_ttl: float | None = None,
     **kwargs,
 ):
     """
@@ -245,10 +283,34 @@ def get_rows(
     :param page: 1-based page number; ignored when ``stmnt`` is supplied.
     :param text_field: Field matched with a text search from ``kwargs``.
     :param stmnt: Custom statement, executed as-is and never paginated.
+    :param use_cache: Read from and fill the cache set by ``configure_cache``
+        (ADR-0012). Bypassed with ``stmnt``, ``selectin`` or ``lazy``.
+    :param cache_ttl: Seconds the entry lives; backend default when None.
     :param kwargs: Filters and sort options for the built query.
     :return: ``(success, rows)`` where ``success`` is True if rows exist.
     """
     paginate = stmnt is None
+    backend = active_backend(
+        use_cache
+        and stmnt is None
+        and not (selectin and select_in_keys)
+        and not (lazy and lazy_load_keys)
+    )
+    if backend:
+        namespace = namespace_for(model)
+        cache_key = make_key(
+            session_inst,
+            model,
+            "get_rows",
+            page=page,
+            page_size=page_size,
+            text_field=text_field,
+            filters=repr(sorted(kwargs.items(), key=lambda kv: kv[0])),
+        )
+        hit = lookup(backend, namespace, cache_key)
+        rows = load_rows(model, hit) if hit is not None else None
+        if rows is not None:
+            return True, rows
     # Inside get_rows (sync and async versions)
 
     # ... existing code ...
@@ -427,6 +489,14 @@ def get_rows(
     _result = session_inst.exec(stmnt)
     results = _result.all()
     success = True if len(results) > 0 else False
+    if success and backend:
+        store(
+            backend,
+            namespace,
+            cache_key,
+            dump_rows(results),
+            cache_ttl,
+        )
 
     return success, results
 
@@ -504,6 +574,7 @@ def delete_rows_within_id_list(
         logger.error(f"Failed to bulk delete rows: {type(e)}, {e}")
         raise
 
+    invalidate_written(session_inst, model)
     return True, deleted
 
 
@@ -560,6 +631,7 @@ def bulk_update_rows(
         logger.error(f"Failed to bulk update rows: {type(e)}, {e}")
         raise
 
+    invalidate_written(session_inst, model)
     return True, updated
 
 
@@ -589,6 +661,7 @@ def delete_row(
         try:
             session_inst.delete(row)
             session_inst.commit()
+            invalidate_written(session_inst, model)
             success = True
         except Exception as e:
             logger.error(
@@ -642,6 +715,7 @@ def bulk_upsert_mappings(
     ).all()
 
     session_inst.commit()
+    invalidate_written(session_inst, model)
 
     return True, results
 
@@ -673,6 +747,7 @@ def update_row(
         try:
             session_inst.add(row)
             session_inst.commit()
+            invalidate_written(session_inst, model)
             success = True
         except Exception as e:
             session_inst.rollback()

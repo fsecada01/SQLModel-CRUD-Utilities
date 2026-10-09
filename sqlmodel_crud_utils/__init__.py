@@ -39,6 +39,15 @@ from sqlmodel_crud_utils.a_sync import insert_data_rows as a_insert_data_rows
 from sqlmodel_crud_utils.a_sync import update_row as a_update_row
 from sqlmodel_crud_utils.a_sync import write_row as a_write_row
 
+# Import cache
+from sqlmodel_crud_utils.cache import (
+    CacheBackend,
+    InMemoryCache,
+    RedisCache,
+    configure_cache,
+    invalidate_cache,
+)
+
 # Import exceptions
 from sqlmodel_crud_utils.exceptions import (
     BulkOperationError,
@@ -128,6 +137,12 @@ __all__ = [
     "AuditMixin",
     "SoftDeleteMixin",
     "TimestampMixin",
+    # Caching
+    "CacheBackend",
+    "InMemoryCache",
+    "RedisCache",
+    "configure_cache",
+    "invalidate_cache",
     # Change tracking
     "HISTORY_METADATA",
     "TrackChangesMixin",

@@ -1,6 +1,6 @@
 # 0007. Defer larger features to v0.3.0
 
-- Status: accepted; change tracking superseded by 0011
+- Status: accepted; change tracking superseded by 0011; caching superseded by 0012
 - Date: 2026-02-16
 
 ## Context
