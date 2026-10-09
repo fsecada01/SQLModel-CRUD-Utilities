@@ -1,6 +1,6 @@
 # 0007. Defer larger features to v0.3.0
 
-- Status: accepted
+- Status: accepted (query builder superseded by 0010)
 - Date: 2026-02-16
 
 ## Context
