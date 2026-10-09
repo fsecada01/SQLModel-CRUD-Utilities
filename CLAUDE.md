@@ -18,7 +18,7 @@ uv run pytest -k pattern            # by keyword
 uv run pytest --cov=sqlmodel_crud_utils
 just lint                           # ruff --fix, isort, black, ty check
 just check                          # pre-commit run --all-files
-just docs                           # regenerate docs/ with pdoc
+uv run docs/make.py                 # regenerate docs/ (pdoc, keeps custom pages); do not use bare `just docs`
 ```
 
 Line length is 80 (ruff, black, isort all agree). Ruff selects only `E`, `F`, `B`. Pre-commit runs black on everything except `tests/`; do not run `black` over the whole `tests/` directory, it reformats unrelated files. `uv run` can rewrite `uv.lock`; revert it unless you meant to change dependencies.

@@ -148,7 +148,7 @@ publish-test: build-check
 
 # Create the next numbered ADR from the template (e.g., just adr "Use X")
 adr TITLE:
-    uv run python scripts/new_adr.py "{{TITLE}}"
+    uv run --no-project python scripts/new_adr.py "{{TITLE}}"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Git Workflow

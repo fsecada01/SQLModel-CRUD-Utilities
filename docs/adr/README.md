@@ -2,7 +2,7 @@
 
 One short file per significant decision, numbered `NNNN-kebab-title.md`. ADRs are immutable once accepted: to change a decision, add a new ADR that supersedes the old one and update the old one's status line to `superseded by NNNN`.
 
-Create the next one with `just adr "Decision title"` (copies the template below to the next number), then add a row to the index.
+Create the next one with `just adr "Decision title"` (copies the template below to the next number; avoid double quotes in the title), then add a row to the index by hand.
 
 ## Template
 
@@ -38,6 +38,10 @@ Options rejected and why. Omit the section if there are none.
 | [0007](0007-defer-larger-features-to-v0-3-0.md) | Defer larger features to v0.3.0 | accepted |
 | [0008](0008-keep-v0-2-0-additive-and-backward-compatible.md) | Keep v0.2.0 additive and backward compatible | accepted |
 | [0009](0009-make-loguru-optional-and-use-uv.md) | Make loguru optional and replace requirements files with uv | accepted |
+
+## Provenance
+
+ADRs 0001 to 0009 were back-filled from the v0.2.0 planning notes (design, quick start, release summary, PR summary and session summary). Their dates are the dates of those notes, not the date they were written. The originals were removed from the tree and last exist at commit `2b6439f`, for example `git show 2b6439f:v0.2.0_ENHANCEMENT_DESIGN.md`. ADR-0006 is `proposed` but unimplemented.
 
 ## Docs layout
 

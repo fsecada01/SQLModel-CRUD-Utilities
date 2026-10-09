@@ -33,7 +33,12 @@ def main(title: str) -> Path:
     ]
     num = f"{max(numbers, default=0) + 1:04d}"
     slug = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:60]
+    if not slug:
+        sys.exit("title must contain ASCII letters or digits")
     path = ADR_DIR / f"{num}-{slug}.md"
+    if path.exists():
+        sys.exit(f"{path} already exists")
+    ADR_DIR.mkdir(parents=True, exist_ok=True)
     path.write_text(
         TEMPLATE.format(num=num, title=title, today=date.today()),
         encoding="utf-8",

@@ -11,4 +11,4 @@ The v0.1.0 library had no non-destructive deletion. The design listed soft delet
 
 ## Consequences
 - The design advises an index on `is_deleted` and care that deleted data is not exposed in queries.
-- Whether the `get_rows` exclusion shipped is not recorded in the source.
+- The `get_rows` exclusion was not implemented: `sync.py` and `a_sync.py` never reference `is_deleted`, so `get_rows` returns soft-deleted rows and callers must filter them. The bulk helpers also bypass the mixin.
