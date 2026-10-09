@@ -8,6 +8,7 @@ from sqlmodel import Session, SQLModel, delete, select, update
 from sqlmodel.sql.expression import SelectOfScalar
 
 from sqlmodel_crud_utils.utils import (
+    QueryBuilderBase,
     chunked,
     get_sql_dialect_import,
     get_val,
@@ -682,3 +683,37 @@ def update_row(
         return success, row
     else:
         return success, None
+
+
+class QueryBuilder(QueryBuilderBase):
+    """
+    Immutable fluent query builder bound to a ``Session`` (ADR-0010).
+
+    Chain ``where``, ``order_by``, ``limit`` and ``offset``, then finish with
+    ``all``, ``first`` or ``count``. Terminals return the library's
+    ``(success, data)`` tuple where ``success`` is True when rows exist.
+    """
+
+    def all(self):
+        """
+        :return: ``(success, rows)``; ``rows`` is an empty list when nothing
+            matched.
+        """
+        rows = self._session.exec(self._stmnt).unique().all()
+        return len(rows) > 0, rows
+
+    def first(self):
+        """
+        :return: ``(success, row)``; ``row`` is ``None`` when nothing matched.
+        """
+        row = self._session.exec(self._first_stmnt()).first()
+        return row is not None, row
+
+    def count(self):
+        """
+        Count rows of the composed statement, honoring limit and offset.
+
+        :return: ``(success, count)`` with ``success`` True when count > 0.
+        """
+        total = self._session.exec(self._count_stmnt()).one()
+        return total > 0, total

@@ -1,6 +1,6 @@
 # 0007. Defer larger features to v0.3.0
 
-- Status: accepted (migration utilities item superseded by 0013)
+- Status: accepted (query builder item superseded by 0010; migration utilities item superseded by 0013)
 - Date: 2026-02-16
 
 ## Context
