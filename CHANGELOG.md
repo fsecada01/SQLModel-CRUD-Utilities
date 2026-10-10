@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   uses `session.exec()` like `sync.get_rows`; a parity test now pins it (#41).
 
 ### Added
+- Query builder `selectin()` / `lazy()` loader methods and `get_rows`-style
+  suffix filters (`__gte`, `__gt`, `__lte`, `__lt`, `__like`, `__in`) in
+  `where()`, sync and async (ADR-0010 amended, #37).
 - Fluent query builder: `QueryBuilder` (sync) and `AsyncQueryBuilder`
   (async), exported from the package root, with `where`, `order_by`,
   `limit`, `offset` and the terminals `all`, `first` and `count`. Builders
