@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Caching hardening (ADR-0012, #36): `RedisCache` index sets now expire,
+  and an entry and its index membership are written atomically (Redis 7+
+  for `PEXPIRE NX/GT`). A TTL of zero or less stores nothing and fractional
+  TTLs are honoured, matching `InMemoryCache`. An async Redis client raises
+  `TypeError` instead of silently missing. Cached values no longer pass
+  through custom `field_serializer`s, so a hit equals a database read.
+  `transaction()` / `a_transaction()` invalidate the written models after
+  commit.
+
 ### Added
 - Fluent query builder: `QueryBuilder` (sync) and `AsyncQueryBuilder`
   (async), exported from the package root, with `where`, `order_by`,
