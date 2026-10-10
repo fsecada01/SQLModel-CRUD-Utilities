@@ -383,3 +383,13 @@ async def test_async_selectin_and_suffix_filters(async_session):
     assert _ids(rows) == [1]
     with pytest.raises(ValueError):
         AsyncQueryBuilder(async_session, MockModel).selectin("nope")
+
+
+def test_conflicting_loaders_raise_value_error_when_chained(session):
+    qb = QueryBuilder(session, MockModel)
+    with pytest.raises(ValueError, match="related_field"):
+        qb.selectin("related_field").lazy("related_field")
+    with pytest.raises(ValueError, match="related_field"):
+        qb.lazy("related_field").selectin("related_field")
+    ok, rows = qb.selectin("related_field").selectin("related_field").all()
+    assert ok

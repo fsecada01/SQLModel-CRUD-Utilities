@@ -143,9 +143,12 @@ class QueryBuilderBase:
         self._session = session_inst
         self._model = model
         self._stmnt = select(model) if stmnt is None else stmnt
+        self._loaders: dict[str, str] = {}
 
-    def _derive(self, stmnt: Any):
-        return type(self)(self._session, self._model, stmnt)
+    def _derive(self, stmnt: Any, loaders: dict[str, str] | None = None):
+        builder = type(self)(self._session, self._model, stmnt)
+        builder._loaders = self._loaders if loaders is None else loaders
+        return builder
 
     def _column(self, name: str):
         if name not in self._model.__table__.columns:
@@ -198,26 +201,33 @@ class QueryBuilderBase:
             return column.in_(list(value))
         raise ValueError(f"Unknown filter suffix {suffix!r} in {name!r}")
 
-    def _relationships(self, names: tuple[str, ...]):
+    def _relationships(self, names: tuple[str, ...], kind: str):
         known = sa_inspect(self._model).relationships
         for name in names:
             if name not in known:
                 raise ValueError(
                     f"{name!r} is not a relationship of {self._model.__name__}"
                 )
-        return [getattr(self._model, name) for name in names]
+            if self._loaders.get(name, kind) != kind:
+                raise ValueError(
+                    f"{name!r} already uses {self._loaders[name]} loading; "
+                    f"cannot also use {kind}"
+                )
+        loaders = {**self._loaders, **dict.fromkeys(names, kind)}
+        return [getattr(self._model, name) for name in names], loaders
 
     def selectin(self, *relationships: str):
         """
         Eager load relationships with ``selectinload``.
 
         :param relationships: Relationship attribute names.
-        :raises ValueError: If a name is not a relationship of the model.
+        :raises ValueError: If a name is not a relationship of the model, or
+            was already given the other loader.
         :return: A new builder.
         """
-        attrs = self._relationships(relationships)
+        attrs, loaders = self._relationships(relationships, "selectin")
         return self._derive(
-            self._stmnt.options(*(selectinload(a) for a in attrs))
+            self._stmnt.options(*(selectinload(a) for a in attrs)), loaders
         )
 
     def lazy(self, *relationships: str):
@@ -225,11 +235,14 @@ class QueryBuilderBase:
         Force ``lazyload`` for relationships, overriding model defaults.
 
         :param relationships: Relationship attribute names.
-        :raises ValueError: If a name is not a relationship of the model.
+        :raises ValueError: If a name is not a relationship of the model, or
+            was already given the other loader.
         :return: A new builder.
         """
-        attrs = self._relationships(relationships)
-        return self._derive(self._stmnt.options(*(lazyload(a) for a in attrs)))
+        attrs, loaders = self._relationships(relationships, "lazy")
+        return self._derive(
+            self._stmnt.options(*(lazyload(a) for a in attrs)), loaders
+        )
 
     def order_by(self, *columns: Any, desc: bool = False):
         """
