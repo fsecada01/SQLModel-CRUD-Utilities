@@ -31,11 +31,27 @@ def get_sql_dialect_import(dialect: str):
     """
     A utility function to dynamically load the correct SQL Dialect from the
     SQLAlchemy package.
-    :param dialect: str
+    :param dialect: str, e.g. ``postgresql``, ``sqlite`` or ``mysql``.
 
     :return: func
+    :raises ValueError: if ``dialect`` is unset/blank or is not a SQLAlchemy
+        dialect that provides ``insert``. The message names the
+        ``SQL_DIALECT`` environment variable.
     """
-    return importlib.import_module(f"sqlalchemy.dialects.{dialect}").insert  # type: ignore[attr-defined]
+    name = (dialect or "").strip()
+    if not name:
+        raise ValueError(
+            "The SQL_DIALECT environment variable is not set. Set it to a "
+            "SQLAlchemy dialect name such as 'postgresql', 'sqlite' or "
+            "'mysql' (environment or .env file)."
+        )
+    try:
+        return importlib.import_module(f"sqlalchemy.dialects.{name}").insert  # type: ignore[attr-defined]
+    except (ImportError, AttributeError) as exc:
+        raise ValueError(
+            f"SQL_DIALECT={name!r} is not a SQLAlchemy dialect with insert "
+            "support. Use a name such as 'postgresql', 'sqlite' or 'mysql'."
+        ) from exc
 
 
 def is_date(val: str, fuzzy: bool = False):
