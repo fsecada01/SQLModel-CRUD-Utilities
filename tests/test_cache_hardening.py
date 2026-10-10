@@ -215,3 +215,9 @@ def test_transaction_rollback_leaves_cache_correct(sess):
             raise ValueError("x")
     _, row = scu.get_row(1, sess, Plain, use_cache=True)
     assert row.n == 1
+
+
+def test_real_async_redis_client_is_rejected():
+    aredis = pytest.importorskip("redis.asyncio")
+    with pytest.raises(TypeError, match="async"):
+        RedisCache(client=aredis.Redis())

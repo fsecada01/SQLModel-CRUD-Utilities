@@ -111,6 +111,19 @@ class InMemoryCache(CacheBackend):
             self._data.clear()
 
 
+def _is_async_client(client: Any) -> bool:
+    """Whether ``client`` is an async Redis client (``redis.asyncio``).
+
+    Its commands return awaitables rather than being coroutine functions, so
+    the class module is checked too.
+    """
+    if inspect.iscoroutinefunction(getattr(client, "get", None)):
+        return True
+    return any(
+        c.__module__.startswith("redis.asyncio") for c in type(client).__mro__
+    )
+
+
 class RedisCache(CacheBackend):
     """Redis-backed cache, shared across processes.
 
@@ -147,7 +160,7 @@ class RedisCache(CacheBackend):
                     "pip install sqlmodel-crud-utilities[cache]"
                 ) from e
             client = redis.Redis.from_url(url or "redis://localhost:6379/0")
-        if inspect.iscoroutinefunction(getattr(client, "get", None)):
+        if _is_async_client(client):
             raise TypeError(
                 "RedisCache needs a synchronous client (redis.Redis), not an "
                 "async one; the async helpers already call it in a thread."
