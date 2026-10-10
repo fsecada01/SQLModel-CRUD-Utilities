@@ -292,3 +292,94 @@ async def test_async_all_with_joinedload_collection_stmnt(async_session):
     ).all()
     assert ok is True
     assert [r.id for r in rows] == [1]
+
+
+# --- #37: loader methods and suffix filters ---------------------------------
+
+
+def _loaded(obj, attr):
+    from sqlalchemy import inspect as sa_inspect
+
+    return attr in sa_inspect(obj).dict
+
+
+def test_selectin_loads_relationship_without_stmnt(session):
+    session.expunge_all()
+    ok, rows = QueryBuilder(session, MockModel).selectin("related_field").all()
+    assert ok and all(_loaded(r, "related_field") for r in rows)
+
+
+def test_lazy_leaves_relationship_unloaded(session):
+    session.expunge_all()
+    ok, rows = QueryBuilder(session, MockModel).lazy("related_field").all()
+    assert ok and not any(_loaded(r, "related_field") for r in rows)
+
+
+def test_loader_methods_are_immutable_and_chain(session):
+    base = QueryBuilder(session, MockModel)
+    derived = base.selectin("related_field")
+    assert derived is not base
+    assert base._stmnt is not derived._stmnt
+    assert derived.where(id=1).count() == (True, 1)
+
+
+def test_loader_rejects_unknown_relationship(session):
+    with pytest.raises(ValueError):
+        QueryBuilder(session, MockModel).selectin("nope")
+    with pytest.raises(ValueError):
+        QueryBuilder(session, MockModel).lazy("name")
+
+
+@pytest.mark.parametrize(
+    ("filters", "expected"),
+    [
+        ({"value__gte": 30}, [3, 4, 5]),
+        ({"value__gt": 30}, [4, 5]),
+        ({"value__lte": 20}, [1, 2]),
+        ({"value__lt": 20}, [1]),
+        ({"name__like": "row-3"}, [3]),
+        ({"id__in": [1, 5]}, [1, 5]),
+        ({"value__gte": 20, "value__lt": 50}, [2, 3, 4]),
+    ],
+)
+def test_suffix_filters(session, filters, expected):
+    ok, rows = (
+        QueryBuilder(session, MockModel).where(**filters).order_by("id").all()
+    )
+    assert _ids(rows) == expected
+
+
+def test_suffix_filter_errors(session):
+    qb = QueryBuilder(session, MockModel)
+    with pytest.raises(ValueError):
+        qb.where(nope__gte=1)
+    with pytest.raises(ValueError):
+        qb.where(id__in=5)
+    with pytest.raises(ValueError):
+        qb.where(value__bogus=1)
+
+
+def test_exact_equality_still_works_with_suffix_support(session):
+    assert QueryBuilder(session, MockModel).where(id=2).count() == (True, 1)
+
+
+@pytest.mark.asyncio
+async def test_async_selectin_and_suffix_filters(async_session):
+    ok, rows = await (
+        AsyncQueryBuilder(async_session, MockModel)
+        .selectin("related_field")
+        .where(value__gte=40)
+        .order_by("id")
+        .all()
+    )
+    assert _ids(rows) == [4, 5]
+    assert all(_loaded(r, "related_field") for r in rows)
+    ok, rows = await (
+        AsyncQueryBuilder(async_session, MockModel)
+        .lazy("related_field")
+        .where(id__in=[1])
+        .all()
+    )
+    assert _ids(rows) == [1]
+    with pytest.raises(ValueError):
+        AsyncQueryBuilder(async_session, MockModel).selectin("nope")

@@ -5,6 +5,8 @@ from typing import Any, Iterator, Sequence
 
 from dateutil.parser import parse as date_parse
 from sqlalchemy import func
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.orm import lazyload, selectinload
 from sqlalchemy.sql import operators
 from sqlmodel import select
 
@@ -114,6 +116,14 @@ def chunked(items: Sequence, size: int) -> Iterator[Sequence]:
         yield items[start : start + size]
 
 
+_SUFFIX_OPS = {
+    "gte": operators.ge,
+    "gt": operators.gt,
+    "lte": operators.le,
+    "lt": operators.lt,
+}
+
+
 class QueryBuilderBase:
     """
     Pure statement composition shared by ``QueryBuilder`` and
@@ -156,16 +166,70 @@ class QueryBuilderBase:
 
         :param clauses: SQLAlchemy boolean expressions such as
             ``Model.value > 5`` or ``or_(...)``.
-        :param equals: ``column=value`` equality filters.
-        :raises ValueError: If a keyword names an unknown column.
+        :param equals: ``column=value`` equality filters. A trailing
+            ``__gte``, ``__gt``, ``__lte``, ``__lt``, ``__like`` (matches
+            ``%value%``) or ``__in`` (list, tuple or set) suffix selects the
+            operator, as in ``get_rows``. A name that is itself a column is
+            always equality. Values are used as given, with no date or
+            integer coercion.
+        :raises ValueError: If a keyword names an unknown column, has an
+            unknown suffix, or ``__in`` is not given a list, tuple or set.
         :return: A new builder.
         """
         stmnt = self._stmnt
         if clauses:
             stmnt = stmnt.where(*clauses)
         for name, value in equals.items():
-            stmnt = stmnt.where(self._column(name) == value)
+            stmnt = stmnt.where(self._filter_clause(name, value))
         return self._derive(stmnt)
+
+    def _filter_clause(self, name: str, value: Any):
+        if name in self._model.__table__.columns or "__" not in name:
+            return self._column(name) == value
+        field, suffix = name.rsplit("__", 1)
+        column = self._column(field)
+        if suffix in _SUFFIX_OPS:
+            return _SUFFIX_OPS[suffix](column, value)
+        if suffix == "like":
+            return column.like(f"%{value}%")
+        if suffix == "in":
+            if not isinstance(value, (list, tuple, set, frozenset)):
+                raise ValueError(f"{name} requires a list, tuple or set")
+            return column.in_(list(value))
+        raise ValueError(f"Unknown filter suffix {suffix!r} in {name!r}")
+
+    def _relationships(self, names: tuple[str, ...]):
+        known = sa_inspect(self._model).relationships
+        for name in names:
+            if name not in known:
+                raise ValueError(
+                    f"{name!r} is not a relationship of {self._model.__name__}"
+                )
+        return [getattr(self._model, name) for name in names]
+
+    def selectin(self, *relationships: str):
+        """
+        Eager load relationships with ``selectinload``.
+
+        :param relationships: Relationship attribute names.
+        :raises ValueError: If a name is not a relationship of the model.
+        :return: A new builder.
+        """
+        attrs = self._relationships(relationships)
+        return self._derive(
+            self._stmnt.options(*(selectinload(a) for a in attrs))
+        )
+
+    def lazy(self, *relationships: str):
+        """
+        Force ``lazyload`` for relationships, overriding model defaults.
+
+        :param relationships: Relationship attribute names.
+        :raises ValueError: If a name is not a relationship of the model.
+        :return: A new builder.
+        """
+        attrs = self._relationships(relationships)
+        return self._derive(self._stmnt.options(*(lazyload(a) for a in attrs)))
 
     def order_by(self, *columns: Any, desc: bool = False):
         """
