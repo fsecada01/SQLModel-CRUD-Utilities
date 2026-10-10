@@ -33,7 +33,7 @@ Line length is 80 (ruff, black, isort all agree). Ruff selects only `E`, `F`, `B
 
 ### Environment quirks
 
-- `SQL_DIALECT` (e.g. `postgresql`, `sqlite`, `mysql`) must be set, via the environment or a `.env` file loaded with `python-dotenv`. `sync.py` and `a_sync.py` call `get_sql_dialect_import` at import time to pick the dialect's `insert` for upserts. If it is unset, importing fails with `No module named 'sqlalchemy.dialects.None'`. `tests/conftest.py` sets it to `sqlite` for the test session.
+- `SQL_DIALECT` (e.g. `postgresql`, `sqlite`, `mysql`) must be set, via the environment or a `.env` file loaded with `python-dotenv`. `sync.py` and `a_sync.py` call `get_sql_dialect_import` at import time to pick the dialect's `insert` for upserts. If it is unset or invalid, importing fails with a `ValueError` naming `SQL_DIALECT`. `tests/conftest.py` sets it to `sqlite` for the test session.
 - `loguru` is optional; `utils.logger` falls back to the stdlib logger.
 - Tests run against SQLite files (`./test_db.sqlite`, sync via `sqlite://`, async via `sqlite+aiosqlite://`); shared fixtures and the mock models live in `tests/conftest.py` and `tests/models.py`.
 
