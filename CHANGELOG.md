@@ -22,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   uses `session.exec()` like `sync.get_rows`; a parity test now pins it (#41).
 
 ### Added
+- Query builder caching (ADR-0015, #38): `QueryBuilder.cached(ttl=None)` /
+  `AsyncQueryBuilder.cached(ttl=None)` let `all()`, `first()` and `count()`
+  read from and fill the ADR-0012 cache. Keys cover the composed statement
+  and its bound values; entries sit in the model's namespace, so every write
+  helper, the bulk helpers and `invalidate_cache()` already drop them.
+  Builders with a caller `stmnt`, `selectin()` / `lazy()`, a second table or
+  raw `text()` in the statement bypass the cache, like `get_rows`. Opt-in;
+  uncached builders behave as before.
 - Query builder `selectin()` / `lazy()` loader methods and `get_rows`-style
   suffix filters (`__gte`, `__gt`, `__lte`, `__lt`, `__like`, `__in`) in
   `where()`, sync and async (ADR-0010 amended, #37).

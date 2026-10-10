@@ -1,5 +1,6 @@
 """
-Opt-in read caching for ``get_row`` and ``get_rows`` (ADR-0012).
+Opt-in read caching for ``get_row``, ``get_rows`` and, through
+``.cached()``, the query builders (ADR-0012, ADR-0015).
 
 Nothing is cached until ``configure_cache()`` installs a backend, and even
 then only calls that pass ``use_cache=True`` read from it. Every library write
@@ -12,12 +13,16 @@ instances, so they are not the objects a database read would return.
 """
 
 import asyncio
+import datetime
+import decimal
+import enum
 import hashlib
 import inspect
 import json
 import math
 import threading
 import time
+import uuid
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -259,6 +264,84 @@ def make_key(session: Any, model: type[SQLModel], op: str, **parts) -> str:
         target = "unknown"
     raw = repr((op, target, sorted(parts.items(), key=lambda kv: kv[0])))
     return hashlib.sha256(raw.encode()).hexdigest()
+
+
+_PLAIN_TYPES = (
+    str,
+    bytes,
+    int,
+    float,
+    bool,
+    decimal.Decimal,
+    datetime.date,
+    datetime.time,
+    datetime.timedelta,
+    uuid.UUID,
+    enum.Enum,
+)
+
+
+def _is_plain(value: Any) -> bool:
+    """Whether ``repr(value)`` fully identifies it, so it can be part of a
+    key. An object with the default ``repr`` would collide with a different
+    object that reuses its address."""
+    if value is None or isinstance(value, _PLAIN_TYPES):
+        return True
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return all(_is_plain(v) for v in value)
+    if isinstance(value, dict):
+        return all(_is_plain(k) and _is_plain(v) for k, v in value.items())
+    return False
+
+
+def statement_key(
+    session: Any, model: type[SQLModel], op: str, stmnt: Any
+) -> str | None:
+    """Build a key for a composed statement, or ``None`` if it cannot be.
+
+    The statement is compiled against the session's dialect; its SQL text
+    and bound parameter values go into the key, so where, order, limit and
+    offset all separate entries. ``make_key`` adds the bind URL. A statement
+    with a bound value of a type whose ``repr`` does not identify it (any
+    object outside plain scalars and their collections) is not keyable.
+    """
+    sync_session = getattr(session, "sync_session", session)
+    try:
+        dialect = sync_session.get_bind(mapper=model.__mapper__).dialect
+        compiled = stmnt.compile(dialect=dialect)
+        if not all(_is_plain(v) for v in compiled.params.values()):
+            return None
+        params = repr(sorted(compiled.params.items(), key=lambda kv: kv[0]))
+        sql = str(compiled)
+    except Exception as e:
+        logger.debug(f"Statement not cacheable: {type(e), e}")
+        return None
+    return make_key(
+        session,
+        model,
+        op,
+        entity=f"{model.__module__}.{model.__qualname__}",
+        sql=sql,
+        params=params,
+    )
+
+
+def query_slot(
+    session: Any,
+    model: type[SQLModel],
+    op: str,
+    stmnt: Any,
+    eligible: bool,
+) -> tuple[CacheBackend, str, str] | None:
+    """Return ``(backend, namespace, key)`` for a builder terminal, or
+    ``None`` when this call must go straight to the database."""
+    backend = active_backend(eligible)
+    if backend is None:
+        return None
+    key = statement_key(session, model, op, stmnt)
+    if key is None:
+        return None
+    return backend, namespace_for(model), key
 
 
 def dump_row(row: SQLModel) -> dict | None:
