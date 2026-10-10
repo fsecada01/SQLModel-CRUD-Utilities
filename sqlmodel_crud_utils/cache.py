@@ -266,30 +266,37 @@ def make_key(session: Any, model: type[SQLModel], op: str, **parts) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-_PLAIN_TYPES = (
-    str,
-    bytes,
-    int,
-    float,
-    bool,
-    decimal.Decimal,
-    datetime.date,
-    datetime.time,
-    datetime.timedelta,
-    uuid.UUID,
-    enum.Enum,
+_PLAIN_TYPES = frozenset(
+    {
+        type(None),
+        str,
+        bytes,
+        int,
+        float,
+        bool,
+        decimal.Decimal,
+        datetime.date,
+        datetime.datetime,
+        datetime.time,
+        datetime.timedelta,
+        uuid.UUID,
+    }
 )
 
 
 def _is_plain(value: Any) -> bool:
     """Whether ``repr(value)`` fully identifies it, so it can be part of a
-    key. An object with the default ``repr`` would collide with a different
-    object that reuses its address."""
-    if value is None or isinstance(value, _PLAIN_TYPES):
+    key. Exact types only: a subclass may override ``repr``, and an object
+    with the default ``repr`` would collide with a different object that
+    reuses its address."""
+    kind = type(value)
+    if kind in _PLAIN_TYPES:
         return True
-    if isinstance(value, (list, tuple, set, frozenset)):
+    if isinstance(value, enum.Enum):
+        return kind.__repr__ is enum.Enum.__repr__
+    if kind in (list, tuple, set, frozenset):
         return all(_is_plain(v) for v in value)
-    if isinstance(value, dict):
+    if kind is dict:
         return all(_is_plain(k) and _is_plain(v) for k, v in value.items())
     return False
 
@@ -303,7 +310,7 @@ def statement_key(
     and bound parameter values go into the key, so where, order, limit and
     offset all separate entries. ``make_key`` adds the bind URL. A statement
     with a bound value of a type whose ``repr`` does not identify it (any
-    object outside plain scalars and their collections) is not keyable.
+    exact type outside plain scalars and their collections) is not keyable.
     """
     sync_session = getattr(session, "sync_session", session)
     try:

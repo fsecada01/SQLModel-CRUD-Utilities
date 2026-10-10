@@ -373,6 +373,48 @@ def test_bind_values_with_opaque_repr_are_not_cached(sync_env):
     assert (one.id, two.id) == (1, 2)
 
 
+class OpaqueStr(str):
+    def __repr__(self):
+        return "OpaqueStr"
+
+
+def test_scalar_subclass_with_opaque_repr_is_not_cached(sync_env):
+    sess, _ = sync_env
+    qb = _cached(sess)
+    assert qb.where(name=OpaqueStr("n1")).first()[1].id == 1
+    assert qb.where(name=OpaqueStr("n2")).first()[1].id == 2
+
+
+def test_enum_and_plain_collection_values_are_cached(sync_env):
+    import datetime
+    import decimal
+    import enum
+    import uuid
+
+    from sqlmodel_crud_utils.cache import statement_key
+
+    class Color(enum.Enum):
+        RED = 1
+
+    class Level(enum.IntEnum):
+        LOW = 1
+
+    sess, _ = sync_env
+    for value in (
+        Color.RED,
+        Level.LOW,
+        datetime.datetime(2020, 1, 1),
+        datetime.date(2020, 1, 1),
+        decimal.Decimal("1.5"),
+        uuid.UUID(int=1),
+        [1, "a", None],
+        (1, 2),
+        {"k": [1.5, True]},
+    ):
+        stmnt = select(MockModel).where(MockModel.value == value)
+        assert statement_key(sess, MockModel, "qb.all", stmnt) is not None
+
+
 def test_bind_value_types_are_distinct_keys(sync_env):
     sess, _ = sync_env
     q = _cached(sess)
