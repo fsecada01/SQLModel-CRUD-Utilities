@@ -1,6 +1,6 @@
 # 0012. Add opt-in read caching with a pluggable backend
 
-- Status: accepted
+- Status: accepted (amended by 0015: query builder integration)
 - Date: 2026-10-09
 
 ## Context
@@ -37,7 +37,7 @@ Invalidation is per namespace (whole table): any write to a model drops every ca
 - Stale reads are possible in three cases: writes the library does not see (above), a concurrent reader repopulating between a commit and its invalidation, and an in-memory cache in a multi-process deployment (each process has its own; use `RedisCache` there). The TTL is the backstop.
 - Cascades and `ON DELETE` actions that change other tables do not invalidate those tables' namespaces. Cached reads exclude relationships, but a foreign key column changed by a database-side action can go stale until expiry or `invalidate_cache`.
 - The cache is global module state, set once at startup; per-session or per-engine backends are not supported.
-- Follow-up: integration with the query builder (ADR-0010) is not done here.
+- Follow-up: integration with the query builder (ADR-0010) is not done here; see ADR-0015.
 
 ## Alternatives considered
 - Cache ORM instances directly: they are bound to a session and would leak across sessions.

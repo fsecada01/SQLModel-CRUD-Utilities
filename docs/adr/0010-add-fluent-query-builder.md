@@ -1,6 +1,6 @@
 # 0010. Add an opt-in fluent query builder
 
-- Status: accepted
+- Status: accepted (amended in #37: loader methods and suffix filters; amended by 0015: cache integration)
 - Date: 2026-10-09
 
 ## Context
@@ -51,6 +51,8 @@ awaited factory would be awkward. Statement composition lives in a shared pure b
   is taken over the composed statement including any limit and offset.
   `first()` returns at most one row and still honors `limit(0)`, giving
   `(False, None)`.
+- Caching (amended for #38): `cached(ttl=None)` lets the terminals use the
+  ADR-0012 cache; see ADR-0015 for keys, eligibility and invalidation.
 - No new dependency and no change to existing functions.
 
 ## Consequences
