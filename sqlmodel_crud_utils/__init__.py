@@ -12,7 +12,7 @@ New in v0.2.0 (see CHANGELOG.md for later releases):
     - Public API exports for easier imports
 """
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 # Import asynchronous functions with a_ prefix
 from sqlmodel_crud_utils.a_sync import AsyncQueryBuilder

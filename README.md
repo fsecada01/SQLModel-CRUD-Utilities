@@ -24,6 +24,7 @@ streamline and expedite common database operations when using SQLModel, offering
 ##  Table of Contents
 
 - [Overview](#-overview)
+- [What's New in v0.4.0](#-whats-new-in-v040)
 - [What's New in v0.2.0](#-whats-new-in-v020)
 - [Features](#-features)
 - [Project Structure](#-project-structure)
@@ -109,6 +110,47 @@ product.restore()                  # Restore it
 
 ---
 
+##  What's New in v0.4.0
+
+All additions are opt-in and backward compatible.
+
+```python
+from sqlmodel_crud_utils import (
+    InMemoryCache,
+    QueryBuilder,
+    TrackChangesMixin,
+    configure_cache,
+    get_change_history,
+    get_row,
+    register_change_tracking,
+)
+
+# Query builder: chain, then finish with all(), first() or count()
+ok, users = (
+    QueryBuilder(session, User)
+    .where(User.age >= 18, active=True)
+    .order_by("name")
+    .limit(20)
+    .all()
+)
+
+# Read caching: nothing is cached until a backend is configured
+configure_cache(InMemoryCache())
+ok, user = get_row(1, session, User, use_cache=True, cache_ttl=60)
+
+# Change tracking: add the mixin to a model, then register once
+class Widget(TrackChangesMixin, SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+
+register_change_tracking()
+ok, history = get_change_history(session, Widget, 1)
+```
+
+Migration utilities (ADR-0013) and GraphQL support (ADR-0014) were evaluated and deliberately not built.
+
+---
+
 ##  Features
 
 -   **Sync & Async Support:** Provides parallel functions in `sqlmodel_crud_utils.sync` and `sqlmodel_crud_utils.a_sync`.
@@ -127,6 +169,9 @@ product.restore()                  # Restore it
 -   **Transaction Context Managers:** Safe transaction handling with automatic commit/rollback.
 -   **Audit Trail Mixins:** Automatic timestamp and user tracking (`AuditMixin`).
 -   **Soft Delete Support:** Mark records as deleted without removing them (`SoftDeleteMixin`).
+-   **Fluent Query Builder:** `QueryBuilder` / `AsyncQueryBuilder` chain `where`, `order_by`, `limit` and `offset`, then finish with `all`, `first` or `count` (opt-in).
+-   **Change Tracking:** `TrackChangesMixin` plus `register_change_tracking()` record ORM inserts, updates and deletes; read them with `get_change_history()` (opt-in).
+-   **Read Caching:** `use_cache=True` on `get_row` / `get_rows` with `InMemoryCache` or `RedisCache` (the optional `[cache]` extra); writes invalidate the model's entries (opt-in).
 -   **Relationship Loading:** Supports eager loading (`selectinload`) and lazy loading (`lazyload`) via parameters in `get_row` and `get_rows`.
 -   **Flexible Filtering:** `get_rows` supports filtering by exact matches (`filter_by`) and common comparisons (`__like`, `__gte`, `__lte`, `__gt`, `__lt`, `__in`) using keyword arguments.
 -   **Pagination:** Built-in pagination for `get_rows`.
@@ -145,7 +190,9 @@ product.restore()                  # Restore it
     ├── utils.py             # Shared utilities
     ├── exceptions.py        # Custom exception hierarchy
     ├── transactions.py      # Transaction context managers
-    └── mixins.py            # Audit and soft-delete mixins
+    ├── mixins.py            # Audit and soft-delete mixins
+    ├── tracking.py          # Opt-in change tracking
+    └── cache.py             # Opt-in read caching backends
 ```
 
 ###  Project Index
@@ -183,6 +230,14 @@ product.restore()                  # Restore it
 				<td><b><a href='sqlmodel_crud_utils/blob/master/mixins.py'>mixins.py</a></b></td>
 				<td>Reusable mixins for common patterns like audit trails (AuditMixin) and soft deletes (SoftDeleteMixin).</td>
 			</tr>
+			<tr>
+				<td><b><a href='sqlmodel_crud_utils/blob/master/tracking.py'>tracking.py</a></b></td>
+				<td>Opt-in change tracking: TrackChangesMixin, register_change_tracking() and the change_history table.</td>
+			</tr>
+			<tr>
+				<td><b><a href='sqlmodel_crud_utils/blob/master/cache.py'>cache.py</a></b></td>
+				<td>Opt-in read caching: CacheBackend, InMemoryCache, RedisCache, configure_cache() and invalidate_cache().</td>
+			</tr>
 			</table>
 		</blockquote>
 	</details>
@@ -219,9 +274,15 @@ Refer to [SQLAlchemy Dialects](https://docs.sqlalchemy.org/en/20/dialects/) for 
 
 **Install from PyPI (Recommended):**
 ```bash
-pip install sqlmodel-crud-utils
+pip install sqlmodel-crud-utilities
 # Or using uv:
-uv pip install sqlmodel-crud-utils
+uv pip install sqlmodel-crud-utilities
+```
+
+**Optional extras:**
+```bash
+pip install "sqlmodel-crud-utilities[cache]"    # RedisCache (redis>=5.0)
+pip install "sqlmodel-crud-utilities[loguru]"   # loguru logging
 ```
 
 **Build from source:**
@@ -484,6 +545,7 @@ This will execute all tests in the `tests/` directory and provide coverage infor
 -   [x] **CI/CD**: Implement GitHub Actions for automated testing, build, and release.
 -   [x] **Beta Release**: Refine features based on initial testing and usage.
 -   [x] **v0.2.0 Release**: Public API, exceptions, transactions, audit trails, soft deletes.
+-   [x] **v0.3.0 / v0.4.0 Releases**: Bulk helpers, TimestampMixin, query builder, change tracking, opt-in caching.
 -   [ ] **Community Feedback**: Solicit feedback from users.
 -   [ ] **360 Development Review**: Comprehensive internal review of code, docs, and tests.
 -   [ ] **Official 1.0 Release**: Stable release suitable for production use.

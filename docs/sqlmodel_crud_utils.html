@@ -433,7 +433,7 @@ synchronous and asynchronous support for common database operations.</p>
 </span><span id="L-12"><a href="#L-12"><span class="linenos"> 12</span></a><span class="sd">    - Public API exports for easier imports</span>
 </span><span id="L-13"><a href="#L-13"><span class="linenos"> 13</span></a><span class="sd">&quot;&quot;&quot;</span>
 </span><span id="L-14"><a href="#L-14"><span class="linenos"> 14</span></a>
-</span><span id="L-15"><a href="#L-15"><span class="linenos"> 15</span></a><span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;0.3.0&quot;</span>
+</span><span id="L-15"><a href="#L-15"><span class="linenos"> 15</span></a><span class="n">__version__</span> <span class="o">=</span> <span class="s2">&quot;0.4.0&quot;</span>
 </span><span id="L-16"><a href="#L-16"><span class="linenos"> 16</span></a>
 </span><span id="L-17"><a href="#L-17"><span class="linenos"> 17</span></a><span class="c1"># Import asynchronous functions with a_ prefix</span>
 </span><span id="L-18"><a href="#L-18"><span class="linenos"> 18</span></a><span class="kn">from</span><span class="w"> </span><span class="nn">sqlmodel_crud_utils.a_sync</span><span class="w"> </span><span class="kn">import</span> <span class="n">AsyncQueryBuilder</span>
@@ -581,7 +581,7 @@ synchronous and asynchronous support for common database operations.</p>
                 <section id="__version__">
                     <div class="attr variable">
             <span class="name">__version__</span>        =
-<span class="default_value">&#39;0.3.0&#39;</span>
+<span class="default_value">&#39;0.4.0&#39;</span>
 
 
     </div>
@@ -3080,38 +3080,38 @@ exception catch that rolls back the session in the event of failure.</p>
 
     </div>
     <a class="headerlink" href="#QueryBuilder"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="QueryBuilder-797"><a href="#QueryBuilder-797"><span class="linenos">797</span></a><span class="k">class</span><span class="w"> </span><span class="nc">QueryBuilder</span><span class="p">(</span><span class="n">QueryBuilderBase</span><span class="p">):</span>
-</span><span id="QueryBuilder-798"><a href="#QueryBuilder-798"><span class="linenos">798</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="QueryBuilder-799"><a href="#QueryBuilder-799"><span class="linenos">799</span></a><span class="sd">    Immutable fluent query builder bound to a ``Session`` (ADR-0010).</span>
-</span><span id="QueryBuilder-800"><a href="#QueryBuilder-800"><span class="linenos">800</span></a>
-</span><span id="QueryBuilder-801"><a href="#QueryBuilder-801"><span class="linenos">801</span></a><span class="sd">    Chain ``where``, ``order_by``, ``limit`` and ``offset``, then finish with</span>
-</span><span id="QueryBuilder-802"><a href="#QueryBuilder-802"><span class="linenos">802</span></a><span class="sd">    ``all``, ``first`` or ``count``. Terminals return the library&#39;s</span>
-</span><span id="QueryBuilder-803"><a href="#QueryBuilder-803"><span class="linenos">803</span></a><span class="sd">    ``(success, data)`` tuple where ``success`` is True when rows exist.</span>
-</span><span id="QueryBuilder-804"><a href="#QueryBuilder-804"><span class="linenos">804</span></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="QueryBuilder-805"><a href="#QueryBuilder-805"><span class="linenos">805</span></a>
-</span><span id="QueryBuilder-806"><a href="#QueryBuilder-806"><span class="linenos">806</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="QueryBuilder-807"><a href="#QueryBuilder-807"><span class="linenos">807</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="QueryBuilder-808"><a href="#QueryBuilder-808"><span class="linenos">808</span></a><span class="sd">        :return: ``(success, rows)``; ``rows`` is an empty list when nothing</span>
-</span><span id="QueryBuilder-809"><a href="#QueryBuilder-809"><span class="linenos">809</span></a><span class="sd">            matched.</span>
-</span><span id="QueryBuilder-810"><a href="#QueryBuilder-810"><span class="linenos">810</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="QueryBuilder-811"><a href="#QueryBuilder-811"><span class="linenos">811</span></a>        <span class="n">rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stmnt</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
-</span><span id="QueryBuilder-812"><a href="#QueryBuilder-812"><span class="linenos">812</span></a>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">rows</span>
-</span><span id="QueryBuilder-813"><a href="#QueryBuilder-813"><span class="linenos">813</span></a>
-</span><span id="QueryBuilder-814"><a href="#QueryBuilder-814"><span class="linenos">814</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">first</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="QueryBuilder-815"><a href="#QueryBuilder-815"><span class="linenos">815</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="QueryBuilder-816"><a href="#QueryBuilder-816"><span class="linenos">816</span></a><span class="sd">        :return: ``(success, row)``; ``row`` is ``None`` when nothing matched.</span>
-</span><span id="QueryBuilder-817"><a href="#QueryBuilder-817"><span class="linenos">817</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="QueryBuilder-818"><a href="#QueryBuilder-818"><span class="linenos">818</span></a>        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_first_stmnt</span><span class="p">())</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
-</span><span id="QueryBuilder-819"><a href="#QueryBuilder-819"><span class="linenos">819</span></a>        <span class="k">return</span> <span class="n">row</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="n">row</span>
-</span><span id="QueryBuilder-820"><a href="#QueryBuilder-820"><span class="linenos">820</span></a>
-</span><span id="QueryBuilder-821"><a href="#QueryBuilder-821"><span class="linenos">821</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="QueryBuilder-822"><a href="#QueryBuilder-822"><span class="linenos">822</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="QueryBuilder-823"><a href="#QueryBuilder-823"><span class="linenos">823</span></a><span class="sd">        Count rows of the composed statement, honoring limit and offset.</span>
-</span><span id="QueryBuilder-824"><a href="#QueryBuilder-824"><span class="linenos">824</span></a>
-</span><span id="QueryBuilder-825"><a href="#QueryBuilder-825"><span class="linenos">825</span></a><span class="sd">        :return: ``(success, count)`` with ``success`` True when count &gt; 0.</span>
-</span><span id="QueryBuilder-826"><a href="#QueryBuilder-826"><span class="linenos">826</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="QueryBuilder-827"><a href="#QueryBuilder-827"><span class="linenos">827</span></a>        <span class="n">total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_count_stmnt</span><span class="p">())</span><span class="o">.</span><span class="n">one</span><span class="p">()</span>
-</span><span id="QueryBuilder-828"><a href="#QueryBuilder-828"><span class="linenos">828</span></a>        <span class="k">return</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="QueryBuilder-798"><a href="#QueryBuilder-798"><span class="linenos">798</span></a><span class="k">class</span><span class="w"> </span><span class="nc">QueryBuilder</span><span class="p">(</span><span class="n">QueryBuilderBase</span><span class="p">):</span>
+</span><span id="QueryBuilder-799"><a href="#QueryBuilder-799"><span class="linenos">799</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="QueryBuilder-800"><a href="#QueryBuilder-800"><span class="linenos">800</span></a><span class="sd">    Immutable fluent query builder bound to a ``Session`` (ADR-0010).</span>
+</span><span id="QueryBuilder-801"><a href="#QueryBuilder-801"><span class="linenos">801</span></a>
+</span><span id="QueryBuilder-802"><a href="#QueryBuilder-802"><span class="linenos">802</span></a><span class="sd">    Chain ``where``, ``order_by``, ``limit`` and ``offset``, then finish with</span>
+</span><span id="QueryBuilder-803"><a href="#QueryBuilder-803"><span class="linenos">803</span></a><span class="sd">    ``all``, ``first`` or ``count``. Terminals return the library&#39;s</span>
+</span><span id="QueryBuilder-804"><a href="#QueryBuilder-804"><span class="linenos">804</span></a><span class="sd">    ``(success, data)`` tuple where ``success`` is True when rows exist.</span>
+</span><span id="QueryBuilder-805"><a href="#QueryBuilder-805"><span class="linenos">805</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="QueryBuilder-806"><a href="#QueryBuilder-806"><span class="linenos">806</span></a>
+</span><span id="QueryBuilder-807"><a href="#QueryBuilder-807"><span class="linenos">807</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="QueryBuilder-808"><a href="#QueryBuilder-808"><span class="linenos">808</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="QueryBuilder-809"><a href="#QueryBuilder-809"><span class="linenos">809</span></a><span class="sd">        :return: ``(success, rows)``; ``rows`` is an empty list when nothing</span>
+</span><span id="QueryBuilder-810"><a href="#QueryBuilder-810"><span class="linenos">810</span></a><span class="sd">            matched.</span>
+</span><span id="QueryBuilder-811"><a href="#QueryBuilder-811"><span class="linenos">811</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="QueryBuilder-812"><a href="#QueryBuilder-812"><span class="linenos">812</span></a>        <span class="n">rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stmnt</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+</span><span id="QueryBuilder-813"><a href="#QueryBuilder-813"><span class="linenos">813</span></a>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">rows</span>
+</span><span id="QueryBuilder-814"><a href="#QueryBuilder-814"><span class="linenos">814</span></a>
+</span><span id="QueryBuilder-815"><a href="#QueryBuilder-815"><span class="linenos">815</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">first</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="QueryBuilder-816"><a href="#QueryBuilder-816"><span class="linenos">816</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="QueryBuilder-817"><a href="#QueryBuilder-817"><span class="linenos">817</span></a><span class="sd">        :return: ``(success, row)``; ``row`` is ``None`` when nothing matched.</span>
+</span><span id="QueryBuilder-818"><a href="#QueryBuilder-818"><span class="linenos">818</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="QueryBuilder-819"><a href="#QueryBuilder-819"><span class="linenos">819</span></a>        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_first_stmnt</span><span class="p">())</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+</span><span id="QueryBuilder-820"><a href="#QueryBuilder-820"><span class="linenos">820</span></a>        <span class="k">return</span> <span class="n">row</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="n">row</span>
+</span><span id="QueryBuilder-821"><a href="#QueryBuilder-821"><span class="linenos">821</span></a>
+</span><span id="QueryBuilder-822"><a href="#QueryBuilder-822"><span class="linenos">822</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="QueryBuilder-823"><a href="#QueryBuilder-823"><span class="linenos">823</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="QueryBuilder-824"><a href="#QueryBuilder-824"><span class="linenos">824</span></a><span class="sd">        Count rows of the composed statement, honoring limit and offset.</span>
+</span><span id="QueryBuilder-825"><a href="#QueryBuilder-825"><span class="linenos">825</span></a>
+</span><span id="QueryBuilder-826"><a href="#QueryBuilder-826"><span class="linenos">826</span></a><span class="sd">        :return: ``(success, count)`` with ``success`` True when count &gt; 0.</span>
+</span><span id="QueryBuilder-827"><a href="#QueryBuilder-827"><span class="linenos">827</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="QueryBuilder-828"><a href="#QueryBuilder-828"><span class="linenos">828</span></a>        <span class="n">total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_count_stmnt</span><span class="p">())</span><span class="o">.</span><span class="n">one</span><span class="p">()</span>
+</span><span id="QueryBuilder-829"><a href="#QueryBuilder-829"><span class="linenos">829</span></a>        <span class="k">return</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total</span>
 </span></pre></div>
 
 
@@ -3134,13 +3134,13 @@ exception catch that rolls back the session in the event of failure.</p>
 
     </div>
     <a class="headerlink" href="#QueryBuilder.all"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="QueryBuilder.all-806"><a href="#QueryBuilder.all-806"><span class="linenos">806</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="QueryBuilder.all-807"><a href="#QueryBuilder.all-807"><span class="linenos">807</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="QueryBuilder.all-808"><a href="#QueryBuilder.all-808"><span class="linenos">808</span></a><span class="sd">        :return: ``(success, rows)``; ``rows`` is an empty list when nothing</span>
-</span><span id="QueryBuilder.all-809"><a href="#QueryBuilder.all-809"><span class="linenos">809</span></a><span class="sd">            matched.</span>
-</span><span id="QueryBuilder.all-810"><a href="#QueryBuilder.all-810"><span class="linenos">810</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="QueryBuilder.all-811"><a href="#QueryBuilder.all-811"><span class="linenos">811</span></a>        <span class="n">rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stmnt</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
-</span><span id="QueryBuilder.all-812"><a href="#QueryBuilder.all-812"><span class="linenos">812</span></a>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">rows</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="QueryBuilder.all-807"><a href="#QueryBuilder.all-807"><span class="linenos">807</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="QueryBuilder.all-808"><a href="#QueryBuilder.all-808"><span class="linenos">808</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="QueryBuilder.all-809"><a href="#QueryBuilder.all-809"><span class="linenos">809</span></a><span class="sd">        :return: ``(success, rows)``; ``rows`` is an empty list when nothing</span>
+</span><span id="QueryBuilder.all-810"><a href="#QueryBuilder.all-810"><span class="linenos">810</span></a><span class="sd">            matched.</span>
+</span><span id="QueryBuilder.all-811"><a href="#QueryBuilder.all-811"><span class="linenos">811</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="QueryBuilder.all-812"><a href="#QueryBuilder.all-812"><span class="linenos">812</span></a>        <span class="n">rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stmnt</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+</span><span id="QueryBuilder.all-813"><a href="#QueryBuilder.all-813"><span class="linenos">813</span></a>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">rows</span>
 </span></pre></div>
 
 
@@ -3165,12 +3165,12 @@ exception catch that rolls back the session in the event of failure.</p>
 
     </div>
     <a class="headerlink" href="#QueryBuilder.first"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="QueryBuilder.first-814"><a href="#QueryBuilder.first-814"><span class="linenos">814</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">first</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="QueryBuilder.first-815"><a href="#QueryBuilder.first-815"><span class="linenos">815</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="QueryBuilder.first-816"><a href="#QueryBuilder.first-816"><span class="linenos">816</span></a><span class="sd">        :return: ``(success, row)``; ``row`` is ``None`` when nothing matched.</span>
-</span><span id="QueryBuilder.first-817"><a href="#QueryBuilder.first-817"><span class="linenos">817</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="QueryBuilder.first-818"><a href="#QueryBuilder.first-818"><span class="linenos">818</span></a>        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_first_stmnt</span><span class="p">())</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
-</span><span id="QueryBuilder.first-819"><a href="#QueryBuilder.first-819"><span class="linenos">819</span></a>        <span class="k">return</span> <span class="n">row</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="n">row</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="QueryBuilder.first-815"><a href="#QueryBuilder.first-815"><span class="linenos">815</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">first</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="QueryBuilder.first-816"><a href="#QueryBuilder.first-816"><span class="linenos">816</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="QueryBuilder.first-817"><a href="#QueryBuilder.first-817"><span class="linenos">817</span></a><span class="sd">        :return: ``(success, row)``; ``row`` is ``None`` when nothing matched.</span>
+</span><span id="QueryBuilder.first-818"><a href="#QueryBuilder.first-818"><span class="linenos">818</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="QueryBuilder.first-819"><a href="#QueryBuilder.first-819"><span class="linenos">819</span></a>        <span class="n">row</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_first_stmnt</span><span class="p">())</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+</span><span id="QueryBuilder.first-820"><a href="#QueryBuilder.first-820"><span class="linenos">820</span></a>        <span class="k">return</span> <span class="n">row</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="n">row</span>
 </span></pre></div>
 
 
@@ -3194,14 +3194,14 @@ exception catch that rolls back the session in the event of failure.</p>
 
     </div>
     <a class="headerlink" href="#QueryBuilder.count"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="QueryBuilder.count-821"><a href="#QueryBuilder.count-821"><span class="linenos">821</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="QueryBuilder.count-822"><a href="#QueryBuilder.count-822"><span class="linenos">822</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="QueryBuilder.count-823"><a href="#QueryBuilder.count-823"><span class="linenos">823</span></a><span class="sd">        Count rows of the composed statement, honoring limit and offset.</span>
-</span><span id="QueryBuilder.count-824"><a href="#QueryBuilder.count-824"><span class="linenos">824</span></a>
-</span><span id="QueryBuilder.count-825"><a href="#QueryBuilder.count-825"><span class="linenos">825</span></a><span class="sd">        :return: ``(success, count)`` with ``success`` True when count &gt; 0.</span>
-</span><span id="QueryBuilder.count-826"><a href="#QueryBuilder.count-826"><span class="linenos">826</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="QueryBuilder.count-827"><a href="#QueryBuilder.count-827"><span class="linenos">827</span></a>        <span class="n">total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_count_stmnt</span><span class="p">())</span><span class="o">.</span><span class="n">one</span><span class="p">()</span>
-</span><span id="QueryBuilder.count-828"><a href="#QueryBuilder.count-828"><span class="linenos">828</span></a>        <span class="k">return</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="QueryBuilder.count-822"><a href="#QueryBuilder.count-822"><span class="linenos">822</span></a>    <span class="k">def</span><span class="w"> </span><span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="QueryBuilder.count-823"><a href="#QueryBuilder.count-823"><span class="linenos">823</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="QueryBuilder.count-824"><a href="#QueryBuilder.count-824"><span class="linenos">824</span></a><span class="sd">        Count rows of the composed statement, honoring limit and offset.</span>
+</span><span id="QueryBuilder.count-825"><a href="#QueryBuilder.count-825"><span class="linenos">825</span></a>
+</span><span id="QueryBuilder.count-826"><a href="#QueryBuilder.count-826"><span class="linenos">826</span></a><span class="sd">        :return: ``(success, count)`` with ``success`` True when count &gt; 0.</span>
+</span><span id="QueryBuilder.count-827"><a href="#QueryBuilder.count-827"><span class="linenos">827</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="QueryBuilder.count-828"><a href="#QueryBuilder.count-828"><span class="linenos">828</span></a>        <span class="n">total</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_count_stmnt</span><span class="p">())</span><span class="o">.</span><span class="n">one</span><span class="p">()</span>
+</span><span id="QueryBuilder.count-829"><a href="#QueryBuilder.count-829"><span class="linenos">829</span></a>        <span class="k">return</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total</span>
 </span></pre></div>
 
 
@@ -3228,38 +3228,38 @@ exception catch that rolls back the session in the event of failure.</p>
 
     </div>
     <a class="headerlink" href="#AsyncQueryBuilder"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="AsyncQueryBuilder-792"><a href="#AsyncQueryBuilder-792"><span class="linenos">792</span></a><span class="k">class</span><span class="w"> </span><span class="nc">AsyncQueryBuilder</span><span class="p">(</span><span class="n">QueryBuilderBase</span><span class="p">):</span>
-</span><span id="AsyncQueryBuilder-793"><a href="#AsyncQueryBuilder-793"><span class="linenos">793</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="AsyncQueryBuilder-794"><a href="#AsyncQueryBuilder-794"><span class="linenos">794</span></a><span class="sd">    Immutable fluent query builder bound to an ``AsyncSession`` (ADR-0010).</span>
-</span><span id="AsyncQueryBuilder-795"><a href="#AsyncQueryBuilder-795"><span class="linenos">795</span></a>
-</span><span id="AsyncQueryBuilder-796"><a href="#AsyncQueryBuilder-796"><span class="linenos">796</span></a><span class="sd">    Chaining methods are synchronous; the terminals ``all``, ``first`` and</span>
-</span><span id="AsyncQueryBuilder-797"><a href="#AsyncQueryBuilder-797"><span class="linenos">797</span></a><span class="sd">    ``count`` are coroutines returning the library&#39;s ``(success, data)``</span>
-</span><span id="AsyncQueryBuilder-798"><a href="#AsyncQueryBuilder-798"><span class="linenos">798</span></a><span class="sd">    tuple where ``success`` is True when rows exist.</span>
-</span><span id="AsyncQueryBuilder-799"><a href="#AsyncQueryBuilder-799"><span class="linenos">799</span></a><span class="sd">    &quot;&quot;&quot;</span>
-</span><span id="AsyncQueryBuilder-800"><a href="#AsyncQueryBuilder-800"><span class="linenos">800</span></a>
-</span><span id="AsyncQueryBuilder-801"><a href="#AsyncQueryBuilder-801"><span class="linenos">801</span></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="AsyncQueryBuilder-802"><a href="#AsyncQueryBuilder-802"><span class="linenos">802</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="AsyncQueryBuilder-803"><a href="#AsyncQueryBuilder-803"><span class="linenos">803</span></a><span class="sd">        :return: ``(success, rows)``; ``rows`` is an empty list when nothing</span>
-</span><span id="AsyncQueryBuilder-804"><a href="#AsyncQueryBuilder-804"><span class="linenos">804</span></a><span class="sd">            matched.</span>
-</span><span id="AsyncQueryBuilder-805"><a href="#AsyncQueryBuilder-805"><span class="linenos">805</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="AsyncQueryBuilder-806"><a href="#AsyncQueryBuilder-806"><span class="linenos">806</span></a>        <span class="n">rows</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stmnt</span><span class="p">))</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
-</span><span id="AsyncQueryBuilder-807"><a href="#AsyncQueryBuilder-807"><span class="linenos">807</span></a>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">rows</span>
-</span><span id="AsyncQueryBuilder-808"><a href="#AsyncQueryBuilder-808"><span class="linenos">808</span></a>
-</span><span id="AsyncQueryBuilder-809"><a href="#AsyncQueryBuilder-809"><span class="linenos">809</span></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">first</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="AsyncQueryBuilder-810"><a href="#AsyncQueryBuilder-810"><span class="linenos">810</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="AsyncQueryBuilder-811"><a href="#AsyncQueryBuilder-811"><span class="linenos">811</span></a><span class="sd">        :return: ``(success, row)``; ``row`` is ``None`` when nothing matched.</span>
-</span><span id="AsyncQueryBuilder-812"><a href="#AsyncQueryBuilder-812"><span class="linenos">812</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="AsyncQueryBuilder-813"><a href="#AsyncQueryBuilder-813"><span class="linenos">813</span></a>        <span class="n">row</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_first_stmnt</span><span class="p">()))</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
-</span><span id="AsyncQueryBuilder-814"><a href="#AsyncQueryBuilder-814"><span class="linenos">814</span></a>        <span class="k">return</span> <span class="n">row</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="n">row</span>
-</span><span id="AsyncQueryBuilder-815"><a href="#AsyncQueryBuilder-815"><span class="linenos">815</span></a>
-</span><span id="AsyncQueryBuilder-816"><a href="#AsyncQueryBuilder-816"><span class="linenos">816</span></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="AsyncQueryBuilder-817"><a href="#AsyncQueryBuilder-817"><span class="linenos">817</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="AsyncQueryBuilder-818"><a href="#AsyncQueryBuilder-818"><span class="linenos">818</span></a><span class="sd">        Count rows of the composed statement, honoring limit and offset.</span>
-</span><span id="AsyncQueryBuilder-819"><a href="#AsyncQueryBuilder-819"><span class="linenos">819</span></a>
-</span><span id="AsyncQueryBuilder-820"><a href="#AsyncQueryBuilder-820"><span class="linenos">820</span></a><span class="sd">        :return: ``(success, count)`` with ``success`` True when count &gt; 0.</span>
-</span><span id="AsyncQueryBuilder-821"><a href="#AsyncQueryBuilder-821"><span class="linenos">821</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="AsyncQueryBuilder-822"><a href="#AsyncQueryBuilder-822"><span class="linenos">822</span></a>        <span class="n">total</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_count_stmnt</span><span class="p">()))</span><span class="o">.</span><span class="n">one</span><span class="p">()</span>
-</span><span id="AsyncQueryBuilder-823"><a href="#AsyncQueryBuilder-823"><span class="linenos">823</span></a>        <span class="k">return</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="AsyncQueryBuilder-793"><a href="#AsyncQueryBuilder-793"><span class="linenos">793</span></a><span class="k">class</span><span class="w"> </span><span class="nc">AsyncQueryBuilder</span><span class="p">(</span><span class="n">QueryBuilderBase</span><span class="p">):</span>
+</span><span id="AsyncQueryBuilder-794"><a href="#AsyncQueryBuilder-794"><span class="linenos">794</span></a><span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="AsyncQueryBuilder-795"><a href="#AsyncQueryBuilder-795"><span class="linenos">795</span></a><span class="sd">    Immutable fluent query builder bound to an ``AsyncSession`` (ADR-0010).</span>
+</span><span id="AsyncQueryBuilder-796"><a href="#AsyncQueryBuilder-796"><span class="linenos">796</span></a>
+</span><span id="AsyncQueryBuilder-797"><a href="#AsyncQueryBuilder-797"><span class="linenos">797</span></a><span class="sd">    Chaining methods are synchronous; the terminals ``all``, ``first`` and</span>
+</span><span id="AsyncQueryBuilder-798"><a href="#AsyncQueryBuilder-798"><span class="linenos">798</span></a><span class="sd">    ``count`` are coroutines returning the library&#39;s ``(success, data)``</span>
+</span><span id="AsyncQueryBuilder-799"><a href="#AsyncQueryBuilder-799"><span class="linenos">799</span></a><span class="sd">    tuple where ``success`` is True when rows exist.</span>
+</span><span id="AsyncQueryBuilder-800"><a href="#AsyncQueryBuilder-800"><span class="linenos">800</span></a><span class="sd">    &quot;&quot;&quot;</span>
+</span><span id="AsyncQueryBuilder-801"><a href="#AsyncQueryBuilder-801"><span class="linenos">801</span></a>
+</span><span id="AsyncQueryBuilder-802"><a href="#AsyncQueryBuilder-802"><span class="linenos">802</span></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="AsyncQueryBuilder-803"><a href="#AsyncQueryBuilder-803"><span class="linenos">803</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="AsyncQueryBuilder-804"><a href="#AsyncQueryBuilder-804"><span class="linenos">804</span></a><span class="sd">        :return: ``(success, rows)``; ``rows`` is an empty list when nothing</span>
+</span><span id="AsyncQueryBuilder-805"><a href="#AsyncQueryBuilder-805"><span class="linenos">805</span></a><span class="sd">            matched.</span>
+</span><span id="AsyncQueryBuilder-806"><a href="#AsyncQueryBuilder-806"><span class="linenos">806</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="AsyncQueryBuilder-807"><a href="#AsyncQueryBuilder-807"><span class="linenos">807</span></a>        <span class="n">rows</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stmnt</span><span class="p">))</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+</span><span id="AsyncQueryBuilder-808"><a href="#AsyncQueryBuilder-808"><span class="linenos">808</span></a>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">rows</span>
+</span><span id="AsyncQueryBuilder-809"><a href="#AsyncQueryBuilder-809"><span class="linenos">809</span></a>
+</span><span id="AsyncQueryBuilder-810"><a href="#AsyncQueryBuilder-810"><span class="linenos">810</span></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">first</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="AsyncQueryBuilder-811"><a href="#AsyncQueryBuilder-811"><span class="linenos">811</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="AsyncQueryBuilder-812"><a href="#AsyncQueryBuilder-812"><span class="linenos">812</span></a><span class="sd">        :return: ``(success, row)``; ``row`` is ``None`` when nothing matched.</span>
+</span><span id="AsyncQueryBuilder-813"><a href="#AsyncQueryBuilder-813"><span class="linenos">813</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="AsyncQueryBuilder-814"><a href="#AsyncQueryBuilder-814"><span class="linenos">814</span></a>        <span class="n">row</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_first_stmnt</span><span class="p">()))</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+</span><span id="AsyncQueryBuilder-815"><a href="#AsyncQueryBuilder-815"><span class="linenos">815</span></a>        <span class="k">return</span> <span class="n">row</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="n">row</span>
+</span><span id="AsyncQueryBuilder-816"><a href="#AsyncQueryBuilder-816"><span class="linenos">816</span></a>
+</span><span id="AsyncQueryBuilder-817"><a href="#AsyncQueryBuilder-817"><span class="linenos">817</span></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="AsyncQueryBuilder-818"><a href="#AsyncQueryBuilder-818"><span class="linenos">818</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="AsyncQueryBuilder-819"><a href="#AsyncQueryBuilder-819"><span class="linenos">819</span></a><span class="sd">        Count rows of the composed statement, honoring limit and offset.</span>
+</span><span id="AsyncQueryBuilder-820"><a href="#AsyncQueryBuilder-820"><span class="linenos">820</span></a>
+</span><span id="AsyncQueryBuilder-821"><a href="#AsyncQueryBuilder-821"><span class="linenos">821</span></a><span class="sd">        :return: ``(success, count)`` with ``success`` True when count &gt; 0.</span>
+</span><span id="AsyncQueryBuilder-822"><a href="#AsyncQueryBuilder-822"><span class="linenos">822</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="AsyncQueryBuilder-823"><a href="#AsyncQueryBuilder-823"><span class="linenos">823</span></a>        <span class="n">total</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_count_stmnt</span><span class="p">()))</span><span class="o">.</span><span class="n">one</span><span class="p">()</span>
+</span><span id="AsyncQueryBuilder-824"><a href="#AsyncQueryBuilder-824"><span class="linenos">824</span></a>        <span class="k">return</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total</span>
 </span></pre></div>
 
 
@@ -3282,13 +3282,13 @@ tuple where <code>success</code> is True when rows exist.</p>
 
     </div>
     <a class="headerlink" href="#AsyncQueryBuilder.all"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="AsyncQueryBuilder.all-801"><a href="#AsyncQueryBuilder.all-801"><span class="linenos">801</span></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="AsyncQueryBuilder.all-802"><a href="#AsyncQueryBuilder.all-802"><span class="linenos">802</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="AsyncQueryBuilder.all-803"><a href="#AsyncQueryBuilder.all-803"><span class="linenos">803</span></a><span class="sd">        :return: ``(success, rows)``; ``rows`` is an empty list when nothing</span>
-</span><span id="AsyncQueryBuilder.all-804"><a href="#AsyncQueryBuilder.all-804"><span class="linenos">804</span></a><span class="sd">            matched.</span>
-</span><span id="AsyncQueryBuilder.all-805"><a href="#AsyncQueryBuilder.all-805"><span class="linenos">805</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="AsyncQueryBuilder.all-806"><a href="#AsyncQueryBuilder.all-806"><span class="linenos">806</span></a>        <span class="n">rows</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stmnt</span><span class="p">))</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
-</span><span id="AsyncQueryBuilder.all-807"><a href="#AsyncQueryBuilder.all-807"><span class="linenos">807</span></a>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">rows</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="AsyncQueryBuilder.all-802"><a href="#AsyncQueryBuilder.all-802"><span class="linenos">802</span></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">all</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="AsyncQueryBuilder.all-803"><a href="#AsyncQueryBuilder.all-803"><span class="linenos">803</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="AsyncQueryBuilder.all-804"><a href="#AsyncQueryBuilder.all-804"><span class="linenos">804</span></a><span class="sd">        :return: ``(success, rows)``; ``rows`` is an empty list when nothing</span>
+</span><span id="AsyncQueryBuilder.all-805"><a href="#AsyncQueryBuilder.all-805"><span class="linenos">805</span></a><span class="sd">            matched.</span>
+</span><span id="AsyncQueryBuilder.all-806"><a href="#AsyncQueryBuilder.all-806"><span class="linenos">806</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="AsyncQueryBuilder.all-807"><a href="#AsyncQueryBuilder.all-807"><span class="linenos">807</span></a>        <span class="n">rows</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stmnt</span><span class="p">))</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+</span><span id="AsyncQueryBuilder.all-808"><a href="#AsyncQueryBuilder.all-808"><span class="linenos">808</span></a>        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">rows</span>
 </span></pre></div>
 
 
@@ -3313,12 +3313,12 @@ tuple where <code>success</code> is True when rows exist.</p>
 
     </div>
     <a class="headerlink" href="#AsyncQueryBuilder.first"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="AsyncQueryBuilder.first-809"><a href="#AsyncQueryBuilder.first-809"><span class="linenos">809</span></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">first</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="AsyncQueryBuilder.first-810"><a href="#AsyncQueryBuilder.first-810"><span class="linenos">810</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="AsyncQueryBuilder.first-811"><a href="#AsyncQueryBuilder.first-811"><span class="linenos">811</span></a><span class="sd">        :return: ``(success, row)``; ``row`` is ``None`` when nothing matched.</span>
-</span><span id="AsyncQueryBuilder.first-812"><a href="#AsyncQueryBuilder.first-812"><span class="linenos">812</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="AsyncQueryBuilder.first-813"><a href="#AsyncQueryBuilder.first-813"><span class="linenos">813</span></a>        <span class="n">row</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_first_stmnt</span><span class="p">()))</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
-</span><span id="AsyncQueryBuilder.first-814"><a href="#AsyncQueryBuilder.first-814"><span class="linenos">814</span></a>        <span class="k">return</span> <span class="n">row</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="n">row</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="AsyncQueryBuilder.first-810"><a href="#AsyncQueryBuilder.first-810"><span class="linenos">810</span></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">first</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="AsyncQueryBuilder.first-811"><a href="#AsyncQueryBuilder.first-811"><span class="linenos">811</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="AsyncQueryBuilder.first-812"><a href="#AsyncQueryBuilder.first-812"><span class="linenos">812</span></a><span class="sd">        :return: ``(success, row)``; ``row`` is ``None`` when nothing matched.</span>
+</span><span id="AsyncQueryBuilder.first-813"><a href="#AsyncQueryBuilder.first-813"><span class="linenos">813</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="AsyncQueryBuilder.first-814"><a href="#AsyncQueryBuilder.first-814"><span class="linenos">814</span></a>        <span class="n">row</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_first_stmnt</span><span class="p">()))</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+</span><span id="AsyncQueryBuilder.first-815"><a href="#AsyncQueryBuilder.first-815"><span class="linenos">815</span></a>        <span class="k">return</span> <span class="n">row</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="n">row</span>
 </span></pre></div>
 
 
@@ -3342,14 +3342,14 @@ tuple where <code>success</code> is True when rows exist.</p>
 
     </div>
     <a class="headerlink" href="#AsyncQueryBuilder.count"></a>
-            <div class="pdoc-code codehilite"><pre><span></span><span id="AsyncQueryBuilder.count-816"><a href="#AsyncQueryBuilder.count-816"><span class="linenos">816</span></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-</span><span id="AsyncQueryBuilder.count-817"><a href="#AsyncQueryBuilder.count-817"><span class="linenos">817</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-</span><span id="AsyncQueryBuilder.count-818"><a href="#AsyncQueryBuilder.count-818"><span class="linenos">818</span></a><span class="sd">        Count rows of the composed statement, honoring limit and offset.</span>
-</span><span id="AsyncQueryBuilder.count-819"><a href="#AsyncQueryBuilder.count-819"><span class="linenos">819</span></a>
-</span><span id="AsyncQueryBuilder.count-820"><a href="#AsyncQueryBuilder.count-820"><span class="linenos">820</span></a><span class="sd">        :return: ``(success, count)`` with ``success`` True when count &gt; 0.</span>
-</span><span id="AsyncQueryBuilder.count-821"><a href="#AsyncQueryBuilder.count-821"><span class="linenos">821</span></a><span class="sd">        &quot;&quot;&quot;</span>
-</span><span id="AsyncQueryBuilder.count-822"><a href="#AsyncQueryBuilder.count-822"><span class="linenos">822</span></a>        <span class="n">total</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_count_stmnt</span><span class="p">()))</span><span class="o">.</span><span class="n">one</span><span class="p">()</span>
-</span><span id="AsyncQueryBuilder.count-823"><a href="#AsyncQueryBuilder.count-823"><span class="linenos">823</span></a>        <span class="k">return</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total</span>
+            <div class="pdoc-code codehilite"><pre><span></span><span id="AsyncQueryBuilder.count-817"><a href="#AsyncQueryBuilder.count-817"><span class="linenos">817</span></a>    <span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">count</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="AsyncQueryBuilder.count-818"><a href="#AsyncQueryBuilder.count-818"><span class="linenos">818</span></a><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+</span><span id="AsyncQueryBuilder.count-819"><a href="#AsyncQueryBuilder.count-819"><span class="linenos">819</span></a><span class="sd">        Count rows of the composed statement, honoring limit and offset.</span>
+</span><span id="AsyncQueryBuilder.count-820"><a href="#AsyncQueryBuilder.count-820"><span class="linenos">820</span></a>
+</span><span id="AsyncQueryBuilder.count-821"><a href="#AsyncQueryBuilder.count-821"><span class="linenos">821</span></a><span class="sd">        :return: ``(success, count)`` with ``success`` True when count &gt; 0.</span>
+</span><span id="AsyncQueryBuilder.count-822"><a href="#AsyncQueryBuilder.count-822"><span class="linenos">822</span></a><span class="sd">        &quot;&quot;&quot;</span>
+</span><span id="AsyncQueryBuilder.count-823"><a href="#AsyncQueryBuilder.count-823"><span class="linenos">823</span></a>        <span class="n">total</span> <span class="o">=</span> <span class="p">(</span><span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">_session</span><span class="o">.</span><span class="n">exec</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_count_stmnt</span><span class="p">()))</span><span class="o">.</span><span class="n">one</span><span class="p">()</span>
+</span><span id="AsyncQueryBuilder.count-824"><a href="#AsyncQueryBuilder.count-824"><span class="linenos">824</span></a>        <span class="k">return</span> <span class="n">total</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">total</span>
 </span></pre></div>
 
 
