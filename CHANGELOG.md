@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   uses `session.exec()` like `sync.get_rows`; a parity test now pins it (#41).
 
 ### Added
+- Docs recipes for calling the helpers from a Strawberry or Graphene
+  GraphQL resolver (mapping `(success, data)` to GraphQL errors) and for
+  using Alembic with the mixins, including adding `HISTORY_METADATA` to
+  `target_metadata` (ADR-0013, ADR-0014, #39).
 - Query builder `selectin()` / `lazy()` loader methods and `get_rows`-style
   suffix filters (`__gte`, `__gt`, `__lte`, `__lt`, `__like`, `__in`) in
   `where()`, sync and async (ADR-0010 amended, #37).
