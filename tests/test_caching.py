@@ -23,6 +23,7 @@ from sqlmodel_crud_utils.cache import (
 )
 
 from .models import MockModel
+from .test_cache_hardening import FakeRedis
 
 
 class Counter:
@@ -250,42 +251,13 @@ def test_in_memory_backend_unit():
     assert cache.get("ns", "c") is None
 
 
-class FakeRedis:
-    """Minimal in-process stand-in for the redis client calls used."""
-
-    def __init__(self):
-        self.kv, self.sets, self.ttls = {}, {}, {}
-
-    def get(self, k):
-        return self.kv.get(k)
-
-    def set(self, k, v, ex=None):
-        self.kv[k] = v
-        self.ttls[k] = ex
-
-    def sadd(self, k, *v):
-        self.sets.setdefault(k, set()).update(v)
-
-    def smembers(self, k):
-        return set(self.sets.get(k, ()))
-
-    def delete(self, *ks):
-        for k in ks:
-            self.kv.pop(k, None)
-            self.sets.pop(k, None)
-
-    def scan_iter(self, match=None):
-        prefix = match.rstrip("*")
-        return iter([k for k in list(self.kv) if k.startswith(prefix)])
-
-
 def test_redis_backend_roundtrip_with_client():
     fake = FakeRedis()
     cache = RedisCache(client=fake, default_ttl=30)
     assert cache.blocking is True
     cache.set("ns", "k", {"a": [1, 2]})
     assert cache.get("ns", "k") == {"a": [1, 2]}
-    assert 30 in fake.ttls.values()
+    assert 30_000 in fake.ttls.values()
     cache.set("other", "k", {"a": 0})
     cache.invalidate("ns")
     assert cache.get("ns", "k") is None

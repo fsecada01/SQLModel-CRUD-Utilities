@@ -13,7 +13,9 @@ instances, so they are not the objects a database read would return.
 
 import asyncio
 import hashlib
+import inspect
 import json
+import math
 import threading
 import time
 from abc import ABC, abstractmethod
@@ -109,13 +111,30 @@ class InMemoryCache(CacheBackend):
             self._data.clear()
 
 
+def _is_async_client(client: Any) -> bool:
+    """Whether ``client`` is an async Redis client (``redis.asyncio``).
+
+    Its commands return awaitables rather than being coroutine functions, so
+    the class module is checked too.
+    """
+    if inspect.iscoroutinefunction(getattr(client, "get", None)):
+        return True
+    return any(
+        c.__module__.startswith("redis.asyncio") for c in type(client).__mro__
+    )
+
+
 class RedisCache(CacheBackend):
     """Redis-backed cache, shared across processes.
 
     Needs the optional ``cache`` extra (``pip install
     sqlmodel-crud-utilities[cache]``). Pass a ready ``client`` or a ``url``.
     Each namespace keeps a Redis set of its keys so ``invalidate`` deletes
-    exactly those keys without scanning.
+    exactly those keys without scanning. An entry and its index membership
+    are written in one transaction, and the index set expires no earlier than
+    its latest entry (this needs Redis 7 for ``PEXPIRE`` with ``NX``/``GT``).
+    A ``ttl`` of zero or less stores nothing, matching ``InMemoryCache``.
+    The client must be synchronous; an async client raises ``TypeError``.
 
     :param url: Redis URL used when no ``client`` is given.
     :param client: An existing ``redis.Redis`` compatible client.
@@ -141,6 +160,11 @@ class RedisCache(CacheBackend):
                     "pip install sqlmodel-crud-utilities[cache]"
                 ) from e
             client = redis.Redis.from_url(url or "redis://localhost:6379/0")
+        if _is_async_client(client):
+            raise TypeError(
+                "RedisCache needs a synchronous client (redis.Redis), not an "
+                "async one; the async helpers already call it in a thread."
+            )
         self._client = client
         self.default_ttl = default_ttl
         self._prefix = prefix
@@ -162,8 +186,17 @@ class RedisCache(CacheBackend):
     def set(self, namespace, key, value, ttl=None):
         ttl = self.default_ttl if ttl is None else ttl
         full = self._key(namespace, key)
-        self._client.set(full, json.dumps(value), ex=max(1, int(ttl)))
-        self._client.sadd(self._index(namespace), full)
+        if ttl <= 0:
+            self._client.delete(full)
+            return
+        millis = max(1, math.ceil(ttl * 1000))
+        index = self._index(namespace)
+        pipe = self._client.pipeline(transaction=True)
+        pipe.set(full, json.dumps(value), px=millis)
+        pipe.sadd(index, full)
+        pipe.pexpire(index, millis, nx=True)
+        pipe.pexpire(index, millis, gt=True)
+        pipe.execute()
 
     def invalidate(self, namespace):
         index = self._index(namespace)
@@ -235,11 +268,10 @@ def dump_row(row: SQLModel) -> dict | None:
     Fields declared with ``exclude=True`` are added back, otherwise a hit
     would rebuild them as their defaults."""
     try:
-        data = row.model_dump(mode="json")
-        for name, field in type(row).model_fields.items():
-            if field.exclude:
-                data[name] = to_jsonable_python(getattr(row, name))
-        return data
+        return {
+            name: to_jsonable_python(getattr(row, name))
+            for name in type(row).model_fields
+        }
     except Exception as e:
         logger.warning(f"Row not cacheable: {type(e), e}")
         return None
