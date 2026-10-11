@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- `bulk_update_rows` / `a_bulk_update_rows` docstrings (and ADR-0004,
+  `CLAUDE.md`) wrongly said `AuditMixin.updated_at` is not refreshed by bulk
+  writes. It is: the column-level `onupdate` fires for a Core `UPDATE`, for
+  `AuditMixin` as for `TimestampMixin`. `updated_by` and `SoftDeleteMixin`
+  fields are not set unless passed in `data`, and ORM events and change
+  tracking do not see bulk writes (ADR-0017, #51). Behaviour is unchanged;
+  tests now pin it.
 - Caching hardening (ADR-0012, #36): `RedisCache` index sets now expire,
   and an entry and its index membership are written atomically (Redis 7+
   for `PEXPIRE NX/GT`). A TTL of zero or less stores nothing and fractional
@@ -22,6 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   uses `session.exec()` like `sync.get_rows`; a parity test now pins it (#41).
 
 ### Added
+- `soft` and `deleted_by` parameters on `delete_rows_within_id_list` /
+  `a_delete_rows_within_id_list` (ADR-0017, #51). `soft=True` soft-deletes the
+  rows in chunked single-transaction `UPDATE`s exactly as
+  `SoftDeleteMixin.soft_delete()` does, skipping rows that are already
+  deleted; the default (`soft=False`) is still a hard `DELETE`.
+  `ValueError` if the model lacks the `SoftDeleteMixin` columns or
+  `deleted_by` is given without `soft=True`.
 - Query builder caching (ADR-0015, #38): `QueryBuilder.cached(ttl=None)` /
   `AsyncQueryBuilder.cached(ttl=None)` let `all()`, `first()` and `count()`
   read from and fill the ADR-0012 cache. Keys cover the composed statement
