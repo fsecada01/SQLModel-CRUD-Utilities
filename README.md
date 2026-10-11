@@ -134,6 +134,14 @@ ok, users = (
     .all()
 )
 
+# get_rows-style suffix filters, loaders, and opt-in caching
+ok, users = (
+    QueryBuilder(session, User)
+    .where(age__gte=18, name__like="an")
+    .cached(ttl=60)  # needs configure_cache(), see below
+    .all()
+)
+
 # Read caching: nothing is cached until a backend is configured
 configure_cache(InMemoryCache())
 ok, user = get_row(1, session, User, use_cache=True, cache_ttl=60)
@@ -147,7 +155,7 @@ register_change_tracking()
 ok, history = get_change_history(session, Widget, 1)
 ```
 
-Migration utilities (ADR-0013) and GraphQL support (ADR-0014) were evaluated and deliberately not built.
+Migration utilities (ADR-0013) and GraphQL support (ADR-0014) were evaluated and deliberately not built. The documentation site has recipes for calling the helpers from a Strawberry or Graphene resolver and for using Alembic with the mixins (`docs/recipes.html`).
 
 ---
 
@@ -169,9 +177,9 @@ Migration utilities (ADR-0013) and GraphQL support (ADR-0014) were evaluated and
 -   **Transaction Context Managers:** Safe transaction handling with automatic commit/rollback.
 -   **Audit Trail Mixins:** Automatic timestamp and user tracking (`AuditMixin`).
 -   **Soft Delete Support:** Mark records as deleted without removing them (`SoftDeleteMixin`).
--   **Fluent Query Builder:** `QueryBuilder` / `AsyncQueryBuilder` chain `where`, `order_by`, `limit` and `offset`, then finish with `all`, `first` or `count` (opt-in).
+-   **Fluent Query Builder:** `QueryBuilder` / `AsyncQueryBuilder` chain `where` (expressions, equality, `get_rows`-style suffix filters), `selectin`, `lazy`, `order_by`, `limit` and `offset`, then finish with `all`, `first` or `count`; `.cached()` opts a builder into the read cache (opt-in).
 -   **Change Tracking:** `TrackChangesMixin` plus `register_change_tracking()` record ORM inserts, updates and deletes; read them with `get_change_history()` (opt-in).
--   **Read Caching:** `use_cache=True` on `get_row` / `get_rows` with `InMemoryCache` or `RedisCache` (the optional `[cache]` extra); writes invalidate the model's entries (opt-in).
+-   **Read Caching:** `use_cache=True` on `get_row` / `get_rows` with `InMemoryCache` or `RedisCache` (the optional `[cache]` extra); writes invalidate the model's entries; `RedisCache` expires its index sets and needs Redis 7+ (opt-in).
 -   **Relationship Loading:** Supports eager loading (`selectinload`) and lazy loading (`lazyload`) via parameters in `get_row` and `get_rows`.
 -   **Flexible Filtering:** `get_rows` supports filtering by exact matches (`filter_by`) and common comparisons (`__like`, `__gte`, `__lte`, `__gt`, `__lt`, `__in`) using keyword arguments.
 -   **Pagination:** Built-in pagination for `get_rows`.
