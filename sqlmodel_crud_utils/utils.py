@@ -214,13 +214,20 @@ def validate_upsert_update_columns(
     :param pk_fields: Conflict-target columns.
     :param update_columns: Column names to write on conflict.
     :raises ValueError: If ``update_columns`` is a bare string, is empty,
-        names an unknown column, a primary-key column or a conflict-target
-        column, or names a column the payload does not provide.
+        has a non-string element, names an unknown column, a primary-key
+        column or a conflict-target column, or names a column the payload
+        does not provide.
     """
     if isinstance(update_columns, (str, bytes)):
         raise ValueError(
             "update_columns must be a sequence of column names, not a "
             f"{type(update_columns).__name__}: {update_columns!r}"
+        )
+    not_names = [c for c in update_columns if not isinstance(c, str)]
+    if not_names:
+        raise ValueError(
+            "update_columns must contain only column-name strings, got: "
+            f"{[type(c).__name__ for c in not_names]}"
         )
     columns = list(dict.fromkeys(update_columns))
     if not columns:
