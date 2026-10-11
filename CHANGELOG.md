@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-10
+
 ### Fixed
 - Caching hardening (ADR-0012, #36): `RedisCache` index sets now expire,
   and an entry and its index membership are written atomically (Redis 7+
@@ -57,6 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inserts, updates and deletes with old and new values. The bulk helpers use
   Core statements and are not tracked. The history table is not created
   unless you call `HISTORY_METADATA.create_all()`.
+
+### Decisions
+- Migration utilities are not built; use Alembic directly (ADR-0013, #26).
+- GraphQL support is not built (ADR-0014, #27).
 
 ## [0.3.0] - 2026-10-08
 
@@ -165,7 +171,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code quality tools: `black`, `isort`, `ruff`
 - Pre-commit hooks configuration
 
-[unreleased]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.3.0...HEAD
+[unreleased]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.1.0...v0.2.0

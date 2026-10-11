@@ -329,8 +329,8 @@ async def list_users(
     success, users = get_rows(
         session_inst=session,
         model=User,
-        offset=skip,
-        limit=limit,
+        page=skip // limit + 1,
+        page_size=limit,
         sort_field="created_at",
         sort_desc=True,
         **filters
@@ -384,7 +384,7 @@ async def update_user(
         updates["updated_by"] = "api"
         success, updated_user = update_row(
             id_str=user_id,
-            data_dict=updates,
+            data=updates,
             model=User,
             session_inst=session
         )
@@ -486,16 +486,16 @@ class Repository(Generic[T]):
     def get_all(
         self,
         session: Session,
-        offset: int = 0,
-        limit: int = 100,
+        page: int = 1,
+        page_size: int = 100,
         **filters
     ) -> List[T]:
         """Get all records with optional filtering"""
         success, records = get_rows(
             session_inst=session,
             model=self.model,
-            offset=offset,
-            limit=limit,
+            page=page,
+            page_size=page_size,
             **filters
         )
         return records if success else []
@@ -509,7 +509,7 @@ class Repository(Generic[T]):
         """Update a record"""
         success, updated = update_row(
             id_str=id,
-            data_dict=updates,
+            data=updates,
             model=self.model,
             session_inst=session
         )
@@ -540,15 +540,15 @@ class AsyncRepository(Generic[T]):
     async def get_all(
         self,
         session: AsyncSession,
-        offset: int = 0,
-        limit: int = 100,
+        page: int = 1,
+        page_size: int = 100,
         **filters
     ) -> List[T]:
         success, records = await a_get_rows(
             session_inst=session,
             model=self.model,
-            offset=offset,
-            limit=limit,
+            page=page,
+            page_size=page_size,
             **filters
         )
         return records if success else []
@@ -565,7 +565,7 @@ class AsyncRepository(Generic[T]):
     ) -> Optional[T]:
         success, updated = await a_update_row(
             id_str=id,
-            data_dict=updates,
+            data=updates,
             model=self.model,
             session_inst=session
         )
@@ -585,7 +585,7 @@ class OrderRepository(Repository[Order]):
         return self.get_all(
             session,
             customer_id=customer_id,
-            limit=limit,
+            page_size=limit,
             sort_field="created_at",
             sort_desc=True
         )
@@ -733,7 +733,7 @@ def upsert_users_from_csv(engine, csv_path: str):
             bulk_upsert_mappings(
                 session_inst=session,
                 model=User,
-                data_mappings=user_mappings
+                payload=user_mappings
             )
             logger.info(f"Upserted {len(user_mappings)} users from CSV")
         except Exception as e:
@@ -828,15 +828,12 @@ class UserManagementService:
         if not include_deleted:
             filters["is_deleted"] = False
 
-        # Calculate offset
-        offset = (page - 1) * page_size
-
         # Execute query
         success, users = get_rows(
             session_inst=session,
             model=User,
-            offset=offset,
-            limit=page_size,
+            page=page,
+            page_size=page_size,
             sort_field=sort_by,
             sort_desc=sort_desc,
             **filters
@@ -857,7 +854,7 @@ class UserManagementService:
             for user_id in user_ids:
                 success, user = update_row(
                     id_str=user_id,
-                    data_dict={
+                    data={
                         "is_active": True,
                         "updated_by": admin_user
                     },
@@ -985,8 +982,8 @@ class TenantRepository(Generic[T]):
     def get_all(
         self,
         session: Session,
-        offset: int = 0,
-        limit: int = 100,
+        page: int = 1,
+        page_size: int = 100,
         **filters
     ) -> List[T]:
         """Get all records for this tenant"""
@@ -997,8 +994,8 @@ class TenantRepository(Generic[T]):
         success, records = get_rows(
             session_inst=session,
             model=self.model,
-            offset=offset,
-            limit=limit,
+            page=page,
+            page_size=page_size,
             **filters
         )
         return records if success else []
@@ -1041,7 +1038,7 @@ class TenantRepository(Generic[T]):
 
         success, updated = update_row(
             id_str=id,
-            data_dict=updates,
+            data=updates,
             model=self.model,
             session_inst=session
         )
@@ -1049,7 +1046,7 @@ class TenantRepository(Generic[T]):
 
     def get_tenant_stats(self, session: Session) -> Dict[str, Any]:
         """Get statistics for this tenant"""
-        all_records = self.get_all(session, limit=10000)
+        all_records = self.get_all(session, page_size=10000)
 
         return {
             "tenant_id": self.tenant_id,
@@ -1222,7 +1219,7 @@ class AuditedRepository:
             # Update entity
             success, updated_record = update_row(
                 id_str=entity_id,
-                data_dict=updates,
+                data=updates,
                 model=self.model,
                 session_inst=tx
             )
