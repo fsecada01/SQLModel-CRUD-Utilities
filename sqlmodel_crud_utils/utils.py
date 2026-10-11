@@ -193,6 +193,64 @@ def validate_update_columns(model: Any, data: dict) -> None:
         )
 
 
+def validate_upsert_update_columns(
+    model: Any,
+    payload: Sequence[dict],
+    pk_fields: Sequence[str],
+    update_columns: Sequence[str],
+) -> list[str]:
+    """
+    Validate the ``update_columns`` of ``bulk_upsert_mappings`` and return
+    them de-duplicated, in the order given (ADR-0016).
+
+    A column is accepted only if it exists on ``model``, is not a primary-key
+    column, is not a conflict-target column, and is a key of the first
+    mapping of ``payload``. The first mapping decides which columns the
+    ``INSERT`` carries, so a column outside it would be written as ``NULL``
+    (``excluded.<col>``) on conflict instead of being left alone.
+
+    :param model: SQLModel table class.
+    :param payload: Row mappings passed to the upsert.
+    :param pk_fields: Conflict-target columns.
+    :param update_columns: Column names to write on conflict.
+    :raises ValueError: If ``update_columns`` is a bare string, is empty,
+        has a non-string element, names an unknown column, a primary-key
+        column or a conflict-target column, or names a column the payload
+        does not provide.
+    """
+    if isinstance(update_columns, (str, bytes)):
+        raise ValueError(
+            "update_columns must be a sequence of column names, not a "
+            f"{type(update_columns).__name__}: {update_columns!r}"
+        )
+    not_names = [c for c in update_columns if not isinstance(c, str)]
+    if not_names:
+        raise ValueError(
+            "update_columns must contain only column-name strings, got: "
+            f"{[type(c).__name__ for c in not_names]}"
+        )
+    columns = list(dict.fromkeys(update_columns))
+    if not columns:
+        raise ValueError(
+            "update_columns must name at least one column; pass None to "
+            "update every provided column"
+        )
+    validate_update_columns(model, dict.fromkeys(columns))
+    conflict = sorted(set(columns) & set(pk_fields))
+    if conflict:
+        raise ValueError(
+            f"Conflict-target column(s) cannot be in update_columns: {conflict}"
+        )
+    provided = set(payload[0]) if payload else set()
+    missing = sorted(set(columns) - provided)
+    if missing:
+        raise ValueError(
+            f"update_columns names column(s) the payload does not provide "
+            f"(the first mapping decides the inserted columns): {missing}"
+        )
+    return columns
+
+
 def chunked(items: Sequence, size: int) -> Iterator[Sequence]:
     """
     Yield successive ``size``-length slices of ``items``.

@@ -1,5 +1,7 @@
 """ """
 
+from typing import Sequence
+
 from dateutil.parser import parse as date_parse
 from dotenv import load_dotenv
 from sqlalchemy.exc import MultipleResultsFound
@@ -34,6 +36,7 @@ from sqlmodel_crud_utils.utils import (
     validate_primary_key_field,
     validate_soft_delete_args,
     validate_update_columns,
+    validate_upsert_update_columns,
 )
 
 load_dotenv()  # take environment variables from .env.
@@ -712,6 +715,7 @@ async def bulk_upsert_mappings(
     session_inst: AsyncSession,
     model: type[SQLModel],
     pk_fields: list[str] | None = None,
+    update_columns: Sequence[str] | None = None,
 ):
     """
     Insert or update a batch of rows in a single ``INSERT ... ON CONFLICT DO
@@ -732,14 +736,31 @@ async def bulk_upsert_mappings(
     :param session_inst: Active session.
     :param model: Table model being upserted.
     :param pk_fields: Conflict-target columns. Defaults to ``["id"]``.
+    :param update_columns: Restrict the columns written on conflict to
+        these (the ``SET`` clause of ``ON CONFLICT DO UPDATE``, ADR-0016).
+        Defaults to ``None``: every column in the first mapping is
+        overwritten. New rows are always inserted with every provided
+        column. Names are table column keys, as in ``payload``; duplicates
+        are ignored.
     :return: ``(True, rows)`` where ``rows`` are the upserted model instances.
+    :raises ValueError: Before any statement is sent, if ``update_columns``
+        is empty or a bare string, names an unknown column, a primary-key
+        column or a ``pk_fields`` column, or names a column the first
+        mapping of ``payload`` does not provide.
     """
     if not pk_fields:
         pk_fields = ["id"]
+    if update_columns is not None:
+        update_columns = validate_upsert_update_columns(
+            model, payload, pk_fields, update_columns
+        )
+    set_columns = (
+        payload[0].keys() if update_columns is None else update_columns
+    )
     stmnt = upsert(model).values(payload)
     stmnt = stmnt.on_conflict_do_update(
         index_elements=[getattr(model, x) for x in pk_fields],
-        set_={k: getattr(stmnt.excluded, k) for k in payload[0].keys()},
+        set_={k: getattr(stmnt.excluded, k) for k in set_columns},
     )
     results = (
         await session_inst.scalars(

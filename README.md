@@ -122,7 +122,7 @@ product.restore()                  # Restore it
     -   `delete_row`: Deletes a row by primary key.
     -   `write_row`: Inserts a single new row.
     -   `insert_data_rows`: Inserts multiple new rows with fallback for individual insertion on bulk failure.
-    -   `bulk_upsert_mappings`: Performs bulk insert-or-update operations (dialect-aware).
+    -   `bulk_upsert_mappings`: Performs bulk insert-or-update operations (dialect-aware). Pass `update_columns=[...]` to write only those columns on conflict.
 -   **Custom Exception Hierarchy:** Detailed exceptions for better error handling and debugging.
 -   **Transaction Context Managers:** Safe transaction handling with automatic commit/rollback.
 -   **Audit Trail Mixins:** Automatic timestamp and user tracking (`AuditMixin`).

@@ -1,6 +1,6 @@
 # 0011. Add opt-in change tracking in a separate history table
 
-- Status: accepted (amended by 0017: the bulk soft-delete mode is also not tracked)
+- Status: accepted (amended by 0016: bulk_upsert_mappings update_columns; amended by 0017: the bulk soft-delete mode is also not tracked)
 - Date: 2026-10-09
 
 ## Context
