@@ -1,6 +1,6 @@
 # 0012. Add opt-in read caching with a pluggable backend
 
-- Status: accepted (amended by 0015: query builder integration; amended by 0016: bulk_upsert_mappings update_columns)
+- Status: accepted (amended by 0015: query builder integration; amended by 0016: bulk_upsert_mappings update_columns; amended by 0017: soft delete invalidates)
 - Date: 2026-10-09
 
 ## Context
@@ -38,6 +38,7 @@ Invalidation is per namespace (whole table): any write to a model drops every ca
 - Cascades and `ON DELETE` actions that change other tables do not invalidate those tables' namespaces. Cached reads exclude relationships, but a foreign key column changed by a database-side action can go stale until expiry or `invalidate_cache`.
 - The cache is global module state, set once at startup; per-session or per-engine backends are not supported.
 - Follow-up: integration with the query builder (ADR-0010) is not done here; see ADR-0015.
+- ADR-0017: the soft-delete mode of `delete_rows_within_id_list` is a write like the hard delete and invalidates the model's entries after the commit.
 
 ## Alternatives considered
 - Cache ORM instances directly: they are bound to a session and would leak across sessions.

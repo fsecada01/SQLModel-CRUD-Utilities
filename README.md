@@ -463,6 +463,35 @@ with Session(engine) as session:
     print(f"Order deleted at {order.deleted_at} by {order.deleted_by}")
 ```
 
+#### Mixins and the bulk helpers
+
+`bulk_update_rows` and `delete_rows_within_id_list` send one Core statement per
+batch of IDs, so they behave differently from the per-instance methods:
+
+- Column-level `onupdate` defaults fire, so `updated_at` is refreshed for both
+  `TimestampMixin` and `AuditMixin`. `updated_by` is **not** set unless you put
+  it in `data`.
+- `SoftDeleteMixin` fields are not set by `bulk_update_rows`. A bulk delete is a
+  hard `DELETE` unless you pass `soft=True`, which marks the rows exactly as
+  `soft_delete()` does and skips rows that are already deleted. The returned
+  count is the number of rows newly marked.
+- ORM events and change tracking do not see bulk writes.
+
+```python
+from sqlmodel_crud_utils import bulk_update_rows, delete_rows_within_id_list
+
+# updated_at refreshes by itself; updated_by only because we pass it.
+bulk_update_rows([1, 2], {"total": 0, "updated_by": "admin"}, session, Order)
+
+# Soft delete (is_deleted, deleted_at, deleted_by); rows stay in the table.
+ok, count = delete_rows_within_id_list(
+    [1, 2, 3], session, Order, soft=True, deleted_by="admin"
+)
+
+# Default: the rows are removed.
+ok, count = delete_rows_within_id_list([4, 5], session, Order)
+```
+
 ###  Testing
 
 Ensure development dependencies are installed (`uv pip install -r dev_requirements.txt` or `pip install -r dev_requirements.txt`).
