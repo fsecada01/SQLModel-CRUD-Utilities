@@ -1,6 +1,6 @@
 # 0011. Add opt-in change tracking in a separate history table
 
-- Status: accepted
+- Status: accepted (amended by 0017: the bulk soft-delete mode is also not tracked)
 - Date: 2026-10-09
 
 ## Context
@@ -28,6 +28,7 @@ Changes made through the ORM unit of work to instances of opted-in models: `writ
 - The history table grows without bound; pruning is the user's responsibility.
 - Old values come from SQLAlchemy attribute history. When an attribute was expired before it was changed, the stored value is read once before the flush so the old value is not lost.
 - Revisit if users need bulk-helper history; that would be a new ADR and an opt-in parameter.
+- ADR-0017 adds an opt-in soft-delete mode to `delete_rows_within_id_list`. It is a Core `UPDATE`, so it writes no history either; column-level `onupdate` defaults such as `updated_at` still fire for any bulk write.
 
 ## Alternatives considered
 - Extend `AuditMixin` with old-value columns: cannot hold per-column history and would change tracked tables.

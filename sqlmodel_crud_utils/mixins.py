@@ -28,7 +28,9 @@ class TimestampMixin:
     Both columns use ``server_default=func.now()``, so the database fills
     them even for inserts that bypass Python-side defaults, such as
     ``bulk_insert_mappings`` or raw ``INSERT`` statements. ``updated_at``
-    additionally refreshes through ``onupdate=func.now()`` on ORM updates.
+    additionally refreshes through ``onupdate=func.now()``. A column-level
+    ``onupdate`` fires for ORM updates and for Core ``UPDATE`` statements
+    such as ``bulk_update_rows``.
 
     The ``declared_attr`` methods intentionally carry no return
     annotations: SQLAlchemy's annotated-declarative scanner would treat
@@ -101,6 +103,9 @@ class AuditMixin:
     Note:
         The `updated_at` field uses SQLAlchemy's `onupdate` parameter to
         automatically update the timestamp when the record is modified.
+        That is a column-level default, so it also fires for Core `UPDATE`
+        statements such as `bulk_update_rows`. `updated_by` has no default:
+        set it yourself, or pass it in `data` to `bulk_update_rows`.
     """
 
     created_at: datetime = Field(
@@ -181,6 +186,10 @@ class SoftDeleteMixin:
 
         The `get_rows` function in this library can be extended to automatically
         exclude soft-deleted records by default.
+
+        `delete_rows_within_id_list(..., soft=True, deleted_by=...)` marks
+        many rows deleted in bulk with the same field semantics as
+        `soft_delete()`. Without `soft=True` that helper is a hard `DELETE`.
     """
 
     deleted_at: Optional[datetime] = Field(
