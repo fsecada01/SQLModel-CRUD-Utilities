@@ -230,6 +230,27 @@ def test_sync_validation_errors_before_touching_db(session, columns, match):
     assert _persisted(session) == before
 
 
+@pytest.mark.parametrize(
+    "columns",
+    [
+        [["value"]],
+        [{"value": 1}],
+        [1, "zzz"],
+        [None],
+        ["value", 2],
+        [("value",), "zzz"],
+    ],
+)
+def test_sync_non_string_elements_raise_value_error(session, columns):
+    """Unhashable or mixed-type elements must be ValueError, not TypeError."""
+    session.counter.statements.clear()
+    with pytest.raises(ValueError, match="update_columns"):
+        sync.bulk_upsert_mappings(
+            INCOMING, session, MockModel, update_columns=columns
+        )
+    assert session.counter.statements == []
+
+
 def test_sync_column_absent_from_payload_is_rejected(session):
     """Otherwise ``excluded.<col>`` would be NULL and wipe the column."""
     with pytest.raises(ValueError, match="value"):
@@ -463,3 +484,12 @@ async def test_async_cache_invalidation_still_fires(a_session):
     )
     ok, row = await scu.a_get_row(1, a_session, MockModel, use_cache=True)
     assert (row.name, row.value) == ("first", 11)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("columns", [[["value"]], [1, "zzz"]])
+async def test_async_non_string_elements_raise_value_error(a_session, columns):
+    with pytest.raises(ValueError, match="update_columns"):
+        await a_sync.bulk_upsert_mappings(
+            INCOMING, a_session, MockModel, update_columns=columns
+        )
