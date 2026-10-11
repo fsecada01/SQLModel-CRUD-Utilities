@@ -1,11 +1,17 @@
 import importlib
 import logging
+import math
 import os
 from typing import Any, Iterator, Sequence
 
 from dateutil.parser import parse as date_parse
 from sqlalchemy import func
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.orm import lazyload, selectinload
 from sqlalchemy.sql import operators
+from sqlalchemy.sql.elements import ColumnClause, TextClause
+from sqlalchemy.sql.selectable import TableClause
+from sqlalchemy.sql.visitors import iterate
 from sqlmodel import select
 
 try:
@@ -31,11 +37,27 @@ def get_sql_dialect_import(dialect: str):
     """
     A utility function to dynamically load the correct SQL Dialect from the
     SQLAlchemy package.
-    :param dialect: str
+    :param dialect: str, e.g. ``postgresql``, ``sqlite`` or ``mysql``.
 
     :return: func
+    :raises ValueError: if ``dialect`` is unset/blank or is not a SQLAlchemy
+        dialect that provides ``insert``. The message names the
+        ``SQL_DIALECT`` environment variable.
     """
-    return importlib.import_module(f"sqlalchemy.dialects.{dialect}").insert  # type: ignore[attr-defined]
+    name = (dialect or "").strip()
+    if not name:
+        raise ValueError(
+            "The SQL_DIALECT environment variable is not set. Set it to a "
+            "SQLAlchemy dialect name such as 'postgresql', 'sqlite' or "
+            "'mysql' (environment or .env file)."
+        )
+    try:
+        return importlib.import_module(f"sqlalchemy.dialects.{name}").insert  # type: ignore[attr-defined]
+    except (ImportError, AttributeError) as exc:
+        raise ValueError(
+            f"SQL_DIALECT={name!r} is not a SQLAlchemy dialect with insert "
+            "support. Use a name such as 'postgresql', 'sqlite' or 'mysql'."
+        ) from exc
 
 
 def is_date(val: str, fuzzy: bool = False):
@@ -114,6 +136,38 @@ def chunked(items: Sequence, size: int) -> Iterator[Sequence]:
         yield items[start : start + size]
 
 
+_SUFFIX_OPS = {
+    "gte": operators.ge,
+    "gt": operators.gt,
+    "lte": operators.le,
+    "lt": operators.lt,
+}
+
+
+def reads_only_table(stmnt: Any, table: Any) -> bool:
+    """
+    Whether ``stmnt`` reads nothing but ``table``.
+
+    Used to decide if a query can be cached under ``table``'s namespace: a
+    statement that pulls in another table (join, subquery, correlated
+    column) would not be invalidated by writes to ``table``. Raw ``text()``
+    and ``literal_column()`` fragments count as unknown and return False.
+
+    :param stmnt: SQLAlchemy statement or clause.
+    :param table: The one allowed ``Table``.
+    """
+    own = (table.schema, table.name)
+    for element in iterate(stmnt):
+        if isinstance(element, TableClause):
+            if (element.schema, element.name) != own:
+                return False
+        elif isinstance(element, TextClause):
+            return False
+        elif isinstance(element, ColumnClause) and element.is_literal:
+            return False
+    return True
+
+
 class QueryBuilderBase:
     """
     Pure statement composition shared by ``QueryBuilder`` and
@@ -124,6 +178,8 @@ class QueryBuilderBase:
     starting point and keeps any loader options it carries; builder clauses
     are added on top of it.
 
+    Terminals read from and fill the cache only after ``cached()`` (ADR-0015).
+
     :param session_inst: Session used by the subclass terminal methods.
     :param model: SQLModel table class being queried.
     :param stmnt: Optional starting ``select`` statement.
@@ -133,9 +189,58 @@ class QueryBuilderBase:
         self._session = session_inst
         self._model = model
         self._stmnt = select(model) if stmnt is None else stmnt
+        self._loaders: dict[str, str] = {}
+        self._custom_stmnt = stmnt is not None
+        self._use_cache = False
+        self._cache_ttl: float | None = None
 
-    def _derive(self, stmnt: Any):
-        return type(self)(self._session, self._model, stmnt)
+    def _derive(self, stmnt: Any, loaders: dict[str, str] | None = None):
+        builder = type(self)(self._session, self._model, stmnt)
+        builder._loaders = self._loaders if loaders is None else loaders
+        builder._custom_stmnt = self._custom_stmnt
+        builder._use_cache = self._use_cache
+        builder._cache_ttl = self._cache_ttl
+        return builder
+
+    def cached(self, ttl: float | None = None):
+        """
+        Let ``all``, ``first`` and ``count`` use the cache (ADR-0015).
+
+        Needs a backend from ``configure_cache``; without one this is a
+        no-op. Calls bypass the cache, like ``get_rows``, when the builder
+        was given a ``stmnt``, uses ``selectin`` or ``lazy``, or the
+        composed statement reads another table or raw SQL. Only non-empty
+        results are stored, and a hit rebuilds session-detached instances.
+        Writes made through the library's helpers invalidate the entries.
+
+        :param ttl: Seconds an entry lives; the backend default when None.
+        :raises ValueError: If ``ttl`` is negative, NaN or not a number.
+        :return: A new builder.
+        """
+        if ttl is not None and (
+            isinstance(ttl, bool)
+            or not isinstance(ttl, (int, float))
+            or math.isnan(ttl)
+            or ttl < 0
+        ):
+            raise ValueError("ttl must be None or a non-negative number")
+        builder = self._derive(self._stmnt)
+        builder._use_cache = True
+        builder._cache_ttl = ttl
+        return builder
+
+    def _cache_eligible(self) -> bool:
+        """Whether the terminals may use the cache.
+
+        ``first`` and ``count`` derive from the same base statement, so it
+        alone decides (the derived ``count(*)`` is itself a literal column).
+        """
+        return (
+            self._use_cache
+            and not self._custom_stmnt
+            and not self._loaders
+            and reads_only_table(self._stmnt, self._model.__table__)
+        )
 
     def _column(self, name: str):
         if name not in self._model.__table__.columns:
@@ -156,16 +261,80 @@ class QueryBuilderBase:
 
         :param clauses: SQLAlchemy boolean expressions such as
             ``Model.value > 5`` or ``or_(...)``.
-        :param equals: ``column=value`` equality filters.
-        :raises ValueError: If a keyword names an unknown column.
+        :param equals: ``column=value`` equality filters. A trailing
+            ``__gte``, ``__gt``, ``__lte``, ``__lt``, ``__like`` (matches
+            ``%value%``) or ``__in`` (list, tuple or set) suffix selects the
+            operator, as in ``get_rows``. A name that is itself a column is
+            always equality. Values are used as given, with no date or
+            integer coercion.
+        :raises ValueError: If a keyword names an unknown column, has an
+            unknown suffix, or ``__in`` is not given a list, tuple or set.
         :return: A new builder.
         """
         stmnt = self._stmnt
         if clauses:
             stmnt = stmnt.where(*clauses)
         for name, value in equals.items():
-            stmnt = stmnt.where(self._column(name) == value)
+            stmnt = stmnt.where(self._filter_clause(name, value))
         return self._derive(stmnt)
+
+    def _filter_clause(self, name: str, value: Any):
+        if name in self._model.__table__.columns or "__" not in name:
+            return self._column(name) == value
+        field, suffix = name.rsplit("__", 1)
+        column = self._column(field)
+        if suffix in _SUFFIX_OPS:
+            return _SUFFIX_OPS[suffix](column, value)
+        if suffix == "like":
+            return column.like(f"%{value}%")
+        if suffix == "in":
+            if not isinstance(value, (list, tuple, set, frozenset)):
+                raise ValueError(f"{name} requires a list, tuple or set")
+            return column.in_(list(value))
+        raise ValueError(f"Unknown filter suffix {suffix!r} in {name!r}")
+
+    def _relationships(self, names: tuple[str, ...], kind: str):
+        known = sa_inspect(self._model).relationships
+        for name in names:
+            if name not in known:
+                raise ValueError(
+                    f"{name!r} is not a relationship of {self._model.__name__}"
+                )
+            if self._loaders.get(name, kind) != kind:
+                raise ValueError(
+                    f"{name!r} already uses {self._loaders[name]} loading; "
+                    f"cannot also use {kind}"
+                )
+        loaders = {**self._loaders, **dict.fromkeys(names, kind)}
+        return [getattr(self._model, name) for name in names], loaders
+
+    def selectin(self, *relationships: str):
+        """
+        Eager load relationships with ``selectinload``.
+
+        :param relationships: Relationship attribute names.
+        :raises ValueError: If a name is not a relationship of the model, or
+            was already given the other loader.
+        :return: A new builder.
+        """
+        attrs, loaders = self._relationships(relationships, "selectin")
+        return self._derive(
+            self._stmnt.options(*(selectinload(a) for a in attrs)), loaders
+        )
+
+    def lazy(self, *relationships: str):
+        """
+        Force ``lazyload`` for relationships, overriding model defaults.
+
+        :param relationships: Relationship attribute names.
+        :raises ValueError: If a name is not a relationship of the model, or
+            was already given the other loader.
+        :return: A new builder.
+        """
+        attrs, loaders = self._relationships(relationships, "lazy")
+        return self._derive(
+            self._stmnt.options(*(lazyload(a) for a in attrs)), loaders
+        )
 
     def order_by(self, *columns: Any, desc: bool = False):
         """

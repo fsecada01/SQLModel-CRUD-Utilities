@@ -11,6 +11,7 @@ from typing import AsyncGenerator, Generator
 from sqlmodel import Session
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from .cache import a_invalidate_written, invalidate_written
 from .exceptions import TransactionError
 
 
@@ -89,6 +90,8 @@ def transaction(session: Session) -> Generator[Session, None, None]:
     except Exception as e:
         session.rollback()
         raise TransactionError(f"Transaction failed: {e}") from e
+    else:
+        invalidate_written(session)
 
 
 @asynccontextmanager
@@ -196,3 +199,5 @@ async def a_transaction(
     except Exception as e:
         await session.rollback()
         raise TransactionError(f"Transaction failed: {e}") from e
+    else:
+        await a_invalidate_written(session)

@@ -1,5 +1,6 @@
 """
-Opt-in read caching for ``get_row`` and ``get_rows`` (ADR-0012).
+Opt-in read caching for ``get_row``, ``get_rows`` and, through
+``.cached()``, the query builders (ADR-0012, ADR-0015).
 
 Nothing is cached until ``configure_cache()`` installs a backend, and even
 then only calls that pass ``use_cache=True`` read from it. Every library write
@@ -12,10 +13,16 @@ instances, so they are not the objects a database read would return.
 """
 
 import asyncio
+import datetime
+import decimal
+import enum
 import hashlib
+import inspect
 import json
+import math
 import threading
 import time
+import uuid
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -109,13 +116,30 @@ class InMemoryCache(CacheBackend):
             self._data.clear()
 
 
+def _is_async_client(client: Any) -> bool:
+    """Whether ``client`` is an async Redis client (``redis.asyncio``).
+
+    Its commands return awaitables rather than being coroutine functions, so
+    the class module is checked too.
+    """
+    if inspect.iscoroutinefunction(getattr(client, "get", None)):
+        return True
+    return any(
+        c.__module__.startswith("redis.asyncio") for c in type(client).__mro__
+    )
+
+
 class RedisCache(CacheBackend):
     """Redis-backed cache, shared across processes.
 
     Needs the optional ``cache`` extra (``pip install
     sqlmodel-crud-utilities[cache]``). Pass a ready ``client`` or a ``url``.
     Each namespace keeps a Redis set of its keys so ``invalidate`` deletes
-    exactly those keys without scanning.
+    exactly those keys without scanning. An entry and its index membership
+    are written in one transaction, and the index set expires no earlier than
+    its latest entry (this needs Redis 7 for ``PEXPIRE`` with ``NX``/``GT``).
+    A ``ttl`` of zero or less stores nothing, matching ``InMemoryCache``.
+    The client must be synchronous; an async client raises ``TypeError``.
 
     :param url: Redis URL used when no ``client`` is given.
     :param client: An existing ``redis.Redis`` compatible client.
@@ -141,6 +165,11 @@ class RedisCache(CacheBackend):
                     "pip install sqlmodel-crud-utilities[cache]"
                 ) from e
             client = redis.Redis.from_url(url or "redis://localhost:6379/0")
+        if _is_async_client(client):
+            raise TypeError(
+                "RedisCache needs a synchronous client (redis.Redis), not an "
+                "async one; the async helpers already call it in a thread."
+            )
         self._client = client
         self.default_ttl = default_ttl
         self._prefix = prefix
@@ -162,8 +191,17 @@ class RedisCache(CacheBackend):
     def set(self, namespace, key, value, ttl=None):
         ttl = self.default_ttl if ttl is None else ttl
         full = self._key(namespace, key)
-        self._client.set(full, json.dumps(value), ex=max(1, int(ttl)))
-        self._client.sadd(self._index(namespace), full)
+        if ttl <= 0:
+            self._client.delete(full)
+            return
+        millis = max(1, math.ceil(ttl * 1000))
+        index = self._index(namespace)
+        pipe = self._client.pipeline(transaction=True)
+        pipe.set(full, json.dumps(value), px=millis)
+        pipe.sadd(index, full)
+        pipe.pexpire(index, millis, nx=True)
+        pipe.pexpire(index, millis, gt=True)
+        pipe.execute()
 
     def invalidate(self, namespace):
         index = self._index(namespace)
@@ -228,6 +266,91 @@ def make_key(session: Any, model: type[SQLModel], op: str, **parts) -> str:
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
+_PLAIN_TYPES = frozenset(
+    {
+        type(None),
+        str,
+        bytes,
+        int,
+        float,
+        bool,
+        decimal.Decimal,
+        datetime.date,
+        datetime.datetime,
+        datetime.time,
+        datetime.timedelta,
+        uuid.UUID,
+    }
+)
+
+
+def _is_plain(value: Any) -> bool:
+    """Whether ``repr(value)`` fully identifies it, so it can be part of a
+    key. Exact types only: a subclass may override ``repr``, and an object
+    with the default ``repr`` would collide with a different object that
+    reuses its address."""
+    kind = type(value)
+    if kind in _PLAIN_TYPES:
+        return True
+    if isinstance(value, enum.Enum):
+        return kind.__repr__ is enum.Enum.__repr__
+    if kind in (list, tuple, set, frozenset):
+        return all(_is_plain(v) for v in value)
+    if kind is dict:
+        return all(_is_plain(k) and _is_plain(v) for k, v in value.items())
+    return False
+
+
+def statement_key(
+    session: Any, model: type[SQLModel], op: str, stmnt: Any
+) -> str | None:
+    """Build a key for a composed statement, or ``None`` if it cannot be.
+
+    The statement is compiled against the session's dialect; its SQL text
+    and bound parameter values go into the key, so where, order, limit and
+    offset all separate entries. ``make_key`` adds the bind URL. A statement
+    with a bound value of a type whose ``repr`` does not identify it (any
+    exact type outside plain scalars and their collections) is not keyable.
+    """
+    sync_session = getattr(session, "sync_session", session)
+    try:
+        dialect = sync_session.get_bind(mapper=model.__mapper__).dialect
+        compiled = stmnt.compile(dialect=dialect)
+        if not all(_is_plain(v) for v in compiled.params.values()):
+            return None
+        params = repr(sorted(compiled.params.items(), key=lambda kv: kv[0]))
+        sql = str(compiled)
+    except Exception as e:
+        logger.debug(f"Statement not cacheable: {type(e), e}")
+        return None
+    return make_key(
+        session,
+        model,
+        op,
+        entity=f"{model.__module__}.{model.__qualname__}",
+        sql=sql,
+        params=params,
+    )
+
+
+def query_slot(
+    session: Any,
+    model: type[SQLModel],
+    op: str,
+    stmnt: Any,
+    eligible: bool,
+) -> tuple[CacheBackend, str, str] | None:
+    """Return ``(backend, namespace, key)`` for a builder terminal, or
+    ``None`` when this call must go straight to the database."""
+    backend = active_backend(eligible)
+    if backend is None:
+        return None
+    key = statement_key(session, model, op, stmnt)
+    if key is None:
+        return None
+    return backend, namespace_for(model), key
+
+
 def dump_row(row: SQLModel) -> dict | None:
     """Serialize a row to a JSON-compatible dict, or ``None`` if it cannot be
     (for example non-UTF-8 ``bytes``), in which case it is not cached.
@@ -235,11 +358,10 @@ def dump_row(row: SQLModel) -> dict | None:
     Fields declared with ``exclude=True`` are added back, otherwise a hit
     would rebuild them as their defaults."""
     try:
-        data = row.model_dump(mode="json")
-        for name, field in type(row).model_fields.items():
-            if field.exclude:
-                data[name] = to_jsonable_python(getattr(row, name))
-        return data
+        return {
+            name: to_jsonable_python(getattr(row, name))
+            for name in type(row).model_fields
+        }
     except Exception as e:
         logger.warning(f"Row not cacheable: {type(e), e}")
         return None

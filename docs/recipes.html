@@ -1682,6 +1682,340 @@ def test_with_factory(session):
             </div>
         </div>
 
+        <!-- Recipe 8: GraphQL resolvers -->
+        <div class="recipe">
+            <div class="recipe-header">
+                <h2>Calling the Helpers from a GraphQL Resolver</h2>
+                <p>Use the CRUD helpers inside Strawberry or Graphene resolvers and map <code>(success, data)</code> to GraphQL errors</p>
+                <div class="recipe-tags">
+                    <span class="tag">GraphQL</span>
+                    <span class="tag">Strawberry</span>
+                    <span class="tag">Graphene</span>
+                    <span class="tag">Error handling</span>
+                </div>
+            </div>
+            <div class="recipe-content">
+                <div class="problem">
+                    <h3>Problem</h3>
+                    <p>You expose your SQLModel data over GraphQL and want to reuse the helpers instead of writing queries by hand. The helpers return <code>(success, data)</code>, which GraphQL's error model does not understand, so each resolver has to decide what a failure looks like.</p>
+                </div>
+
+                <div class="code-section">
+                    <h3>Solution</h3>
+                    <p>The library ships no GraphQL module (see ADR-0014). Resolvers are plain functions, so they call the helpers directly. Put the database session in the GraphQL context and translate the tuple in each resolver.</p>
+                    <div class="code-example">
+                        <div class="code-header">Strawberry (sync): query, mutations and error mapping</div>
+                        <pre><code class="language-python">from typing import Optional
+
+import strawberry
+from graphql import GraphQLError
+from sqlmodel import Field, Session, SQLModel, create_engine
+from strawberry.types import Info
+
+from sqlmodel_crud_utils import delete_row, get_row, update_row, write_row
+
+
+class User(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(unique=True)
+
+
+@strawberry.type
+class UserType:
+    id: int
+    name: str
+
+
+def to_type(row: User) -&gt; UserType:
+    return UserType(id=row.id, name=row.name)
+
+
+@strawberry.type
+class Query:
+    @strawberry.field
+    def user(self, info: Info, id: int) -&gt; Optional[UserType]:
+        session: Session = info.context["session"]
+        found, row = get_row(id, session, User)
+        return to_type(row) if found else None  # not found -&gt; null
+
+
+@strawberry.type
+class Mutation:
+    @strawberry.mutation
+    def create_user(self, info: Info, name: str) -&gt; UserType:
+        session: Session = info.context["session"]
+        ok, row = write_row(User(name=name), session)
+        if not ok:
+            raise GraphQLError(
+                "Could not create user",
+                extensions={"code": "WRITE_FAILED"},
+            )
+        return to_type(row)
+
+    @strawberry.mutation
+    def rename_user(self, info: Info, id: int, name: str) -&gt; UserType:
+        session: Session = info.context["session"]
+        ok, row = update_row(id, {"name": name}, session, User)
+        if row is None:
+            raise GraphQLError(
+                "User not found", extensions={"code": "NOT_FOUND"}
+            )
+        if not ok:
+            raise GraphQLError(
+                "Update failed", extensions={"code": "WRITE_FAILED"}
+            )
+        return to_type(row)
+
+    @strawberry.mutation
+    def delete_user(self, info: Info, id: int) -&gt; bool:
+        session: Session = info.context["session"]
+        if not delete_row(id, session, User):
+            raise GraphQLError("User not found or delete failed")
+        return True
+
+
+schema = strawberry.Schema(query=Query, mutation=Mutation)
+
+# Run it: pass the session through the GraphQL context.
+# schema.execute_sync(query, context_value={"session": session})
+</code></pre>
+                    </div>
+                    <div class="code-example">
+                        <div class="code-header">Strawberry (async): use the a_ helpers with an AsyncSession</div>
+                        <pre><code class="language-python">from sqlmodel.ext.asyncio.session import AsyncSession  # has .exec()
+from sqlmodel_crud_utils import a_get_row, a_write_row
+
+@strawberry.type
+class Query:
+    @strawberry.field
+    async def user(self, info: Info, id: int) -&gt; Optional[UserType]:
+        session: AsyncSession = info.context["session"]
+        found, row = await a_get_row(id, session, User)
+        return UserType(id=row.id, name=row.name) if found else None
+
+
+@strawberry.type
+class Mutation:
+    @strawberry.mutation
+    async def create_user(self, info: Info, name: str) -&gt; UserType:
+        session: AsyncSession = info.context["session"]
+        ok, row = await a_write_row(User(name=name), session)
+        if not ok:
+            raise GraphQLError("Could not create user")
+        return UserType(id=row.id, name=row.name)
+
+
+# One AsyncSession per request. expire_on_commit=False keeps returned
+# rows readable after the helper commits:
+# AsyncSession(engine, expire_on_commit=False)
+</code></pre>
+                    </div>
+                    <div class="code-example">
+                        <div class="code-header">Graphene: the same mapping</div>
+                        <pre><code class="language-python">from typing import Optional
+
+import graphene
+from graphql import GraphQLError
+from sqlmodel import Field, Session, SQLModel, create_engine
+
+from sqlmodel_crud_utils import get_row, write_row
+
+
+class User(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(unique=True)
+
+
+class UserType(graphene.ObjectType):
+    id = graphene.Int(required=True)
+    name = graphene.String(required=True)
+
+
+class Query(graphene.ObjectType):
+    user = graphene.Field(UserType, id=graphene.Int(required=True))
+
+    def resolve_user(root, info, id):
+        found, row = get_row(id, info.context["session"], User)
+        return row if found else None
+
+
+class CreateUser(graphene.Mutation):
+    class Arguments:
+        name = graphene.String(required=True)
+
+    Output = UserType
+
+    def mutate(root, info, name):
+        ok, row = write_row(User(name=name), info.context["session"])
+        if not ok:
+            raise GraphQLError(
+                "Could not create user", extensions={"code": "WRITE_FAILED"}
+            )
+        return row
+
+
+class Mutation(graphene.ObjectType):
+    create_user = CreateUser.Field()
+
+
+schema = graphene.Schema(query=Query, mutation=Mutation)
+
+# Run it: pass the session through the GraphQL context.
+# schema.execute(query, context_value={"session": session})
+</code></pre>
+                    </div>
+                </div>
+
+                <div class="explanation">
+                    <h3>Explanation</h3>
+                    <p>The mapping policy lives in your resolvers, which is why the library does not pick one for you:</p>
+                    <ul>
+                        <li><strong>Reads:</strong> <code>get_row</code> returns <code>(False, None)</code> when no row matches, so a nullable field returns <code>None</code> and GraphQL sends <code>null</code> with no error. Raise instead if a missing row should be an error.</li>
+                        <li><strong>Writes:</strong> <code>write_row</code> returns <code>(False, None)</code> on any database error. <code>update_row</code> returns <code>(False, None)</code> for a missing row but <code>(False, row)</code> when the commit fails. Raise <code>graphql.GraphQLError</code> with an <code>extensions</code> code so clients can branch on it.</li>
+                        <li><strong>Deletes:</strong> <code>delete_row</code> returns a bare <code>bool</code>, not a tuple, and cannot tell "not found" from "failed".</li>
+                    </ul>
+
+                    <div class="key-points">
+                        <h4>Key Points</h4>
+                        <ul>
+                            <li>Failure details are not in the tuple. The helper logs the exception and rolls the session back, so keep the <code>GraphQLError</code> message generic and do not echo database errors to clients.</li>
+                            <li>The sync helpers need <code>sqlmodel.Session</code> and the async helpers need <code>sqlmodel.ext.asyncio.session.AsyncSession</code>. SQLAlchemy's own <code>AsyncSession</code> has no <code>exec()</code> and fails with <code>AttributeError</code>.</li>
+                            <li>Create the session per request and pass it in the context. Do not share one session across concurrent requests.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recipe 9: Alembic -->
+        <div class="recipe">
+            <div class="recipe-header">
+                <h2>Alembic Migrations with the Mixins</h2>
+                <p>Autogenerate migrations for <code>AuditMixin</code>, <code>TimestampMixin</code>, <code>SoftDeleteMixin</code> and <code>TrackChangesMixin</code></p>
+                <div class="recipe-tags">
+                    <span class="tag">Alembic</span>
+                    <span class="tag">Migrations</span>
+                    <span class="tag">Mixins</span>
+                </div>
+            </div>
+            <div class="recipe-content">
+                <div class="problem">
+                    <h3>Problem</h3>
+                    <p>Your models use the library's mixins and you manage schema with Alembic. The mixins add columns to your tables, and change tracking stores its rows in a table that Alembic does not see by default.</p>
+                </div>
+
+                <div class="code-section">
+                    <h3>Solution</h3>
+                    <p>The library ships no migration tooling (see ADR-0013). The mixins are ordinary columns, so use Alembic as you would for any model change, with one addition for change tracking: list <code>HISTORY_METADATA</code> in <code>target_metadata</code>.</p>
+                    <div class="code-example">
+                        <div class="code-header">Models using the mixins</div>
+                        <pre><code class="language-python"># models.py
+from typing import Optional
+
+from sqlmodel import Field, SQLModel
+
+from sqlmodel_crud_utils import (
+    AuditMixin,
+    SoftDeleteMixin,
+    TimestampMixin,
+    TrackChangesMixin,
+)
+
+
+class Article(
+    AuditMixin, SoftDeleteMixin, TrackChangesMixin, SQLModel, table=True
+):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    title: str
+
+
+class Tag(TimestampMixin, SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    label: str
+</code></pre>
+                    </div>
+                    <div class="code-example">
+                        <div class="code-header">Alembic env.py: include the change_history table</div>
+                        <pre><code class="language-python"># migrations/env.py
+import models  # noqa: F401  (importing registers every table)
+from sqlmodel import SQLModel
+
+from sqlmodel_crud_utils import HISTORY_METADATA
+
+# change_history lives on HISTORY_METADATA, not SQLModel.metadata, so
+# autogenerate cannot see it unless you list it here.
+target_metadata = [SQLModel.metadata, HISTORY_METADATA]
+</code></pre>
+                    </div>
+                    <div class="code-example">
+                        <div class="code-header">script.py.mako: SQLModel string columns need the sqlmodel import</div>
+                        <pre><code class="language-python"># migrations/script.py.mako: add one line next to "import sqlalchemy as sa"
+import sqlalchemy as sa
+import sqlmodel  # noqa: F401  (autogenerate emits sqlmodel AutoString)
+</code></pre>
+                    </div>
+                    <div class="code-example">
+                        <div class="code-header">Generate, apply and verify</div>
+                        <pre><code class="language-bash">alembic revision --autogenerate -m "add articles"
+alembic upgrade head
+alembic check   # "No new upgrade operations detected." when in sync
+</code></pre>
+                    </div>
+                </div>
+
+                <div class="explanation">
+                    <h3>Explanation</h3>
+                    <ul>
+                        <li><strong><code>AuditMixin</code></strong> adds <code>created_at</code>, <code>updated_at</code>, <code>created_by</code>, <code>updated_by</code> and an index on <code>created_at</code>. Its defaults are applied in Python, so the generated columns have no database default.</li>
+                        <li><strong><code>TimestampMixin</code></strong> adds <code>created_at</code> and <code>updated_at</code> with <code>server_default=func.now()</code>, which Alembic writes into the migration.</li>
+                        <li><strong><code>SoftDeleteMixin</code></strong> adds <code>deleted_at</code>, <code>deleted_by</code> and <code>is_deleted</code>, with indexes on <code>deleted_at</code> and <code>is_deleted</code>. <code>is_deleted</code> is <code>NOT NULL</code> with a Python-side default only.</li>
+                        <li><strong><code>TrackChangesMixin</code></strong> adds no columns to your table. Its history goes to <code>change_history</code>, defined on <code>HISTORY_METADATA</code>, a separate <code>MetaData</code> from <code>SQLModel.metadata</code>.</li>
+                    </ul>
+
+                    <div class="warning">
+                        <strong>Add HISTORY_METADATA explicitly.</strong> With <code>target_metadata = SQLModel.metadata</code> alone, autogenerate never creates <code>change_history</code>, and a database that already has the table gets a proposal to drop it. List both metadata objects, as in the env.py above, and the table is created and then compared like any other.
+                    </div>
+
+                    <h3>Adding a mixin to a table that already has rows</h3>
+                    <p>Columns that are <code>NOT NULL</code> with no database default (<code>is_deleted</code> from <code>SoftDeleteMixin</code>, <code>created_at</code> from <code>AuditMixin</code>) cannot be added to a populated table as generated. Autogenerate emits them without a default and the migration fails, for example on SQLite with <code>Cannot add a NOT NULL column with default value NULL</code>. Edit the generated migration to give existing rows a value:</p>
+                    <div class="code-example">
+                        <div class="code-header">Edit the autogenerated add_column calls</div>
+                        <pre><code class="language-python"># Autogenerated for a table that already has rows (fails):
+op.add_column("note", sa.Column("is_deleted", sa.Boolean(), nullable=False))
+op.add_column("note", sa.Column("created_at", sa.DateTime(), nullable=False))
+
+# Edited so existing rows get a value:
+op.add_column(
+    "note",
+    sa.Column(
+        "is_deleted", sa.Boolean(), server_default=sa.false(), nullable=False
+    ),
+)
+op.add_column(
+    "note",
+    sa.Column(
+        "created_at",
+        sa.DateTime(),
+        server_default=sa.func.now(),  # see the SQLite note below
+        nullable=False,
+    ),
+)
+</code></pre>
+                    </div>
+
+                    <div class="key-points">
+                        <h4>Key Points</h4>
+                        <ul>
+                            <li>SQLite rejects a non-constant default such as <code>func.now()</code> in <code>ADD COLUMN</code>; use a constant like <code>sa.text("'2000-01-01 00:00:00'")</code> there. Check what your own database accepts before relying on <code>func.now()</code>.</li>
+                            <li>On SQLite, DDL is not transactional, so a migration that fails partway leaves the columns it already added. Restore the database before re-running it.</li>
+                            <li>Run <code>alembic check</code> in CI to catch model changes that have no migration.</li>
+                            <li>The migration only creates the <code>change_history</code> table. Recording starts when your application calls <code>register_change_tracking()</code>.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <footer>

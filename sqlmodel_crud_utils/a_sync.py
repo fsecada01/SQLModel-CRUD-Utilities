@@ -19,6 +19,7 @@ from sqlmodel_crud_utils.cache import (
     load_rows,
     make_key,
     namespace_for,
+    query_slot,
 )
 from sqlmodel_crud_utils.tracking import history_select
 from sqlmodel_crud_utils.utils import (
@@ -795,22 +796,49 @@ class AsyncQueryBuilder(QueryBuilderBase):
 
     Chaining methods are synchronous; the terminals ``all``, ``first`` and
     ``count`` are coroutines returning the library's ``(success, data)``
-    tuple where ``success`` is True when rows exist.
+    tuple where ``success`` is True when rows exist. Chain ``cached()`` to
+    read from and fill the cache (ADR-0015).
     """
+
+    def _slot(self, op, stmnt):
+        return query_slot(
+            self._session,
+            self._model,
+            op,
+            stmnt,
+            self._cache_eligible(),
+        )
 
     async def all(self):
         """
         :return: ``(success, rows)``; ``rows`` is an empty list when nothing
             matched.
         """
+        slot = self._slot("qb.all", self._stmnt)
+        if slot:
+            hit = await a_lookup(*slot)
+            rows = load_rows(self._model, hit) if hit is not None else None
+            if rows is not None:
+                return True, rows
         rows = (await self._session.exec(self._stmnt)).unique().all()
+        if slot and rows:
+            await a_store(*slot, dump_rows(rows), self._cache_ttl)
         return len(rows) > 0, rows
 
     async def first(self):
         """
         :return: ``(success, row)``; ``row`` is ``None`` when nothing matched.
         """
-        row = (await self._session.exec(self._first_stmnt())).first()
+        stmnt = self._first_stmnt()
+        slot = self._slot("qb.first", stmnt)
+        if slot:
+            hit = await a_lookup(*slot)
+            row = load_row(self._model, hit) if hit is not None else None
+            if row is not None:
+                return True, row
+        row = (await self._session.exec(stmnt)).first()
+        if slot and row is not None:
+            await a_store(*slot, dump_row(row), self._cache_ttl)
         return row is not None, row
 
     async def count(self):
@@ -819,5 +847,13 @@ class AsyncQueryBuilder(QueryBuilderBase):
 
         :return: ``(success, count)`` with ``success`` True when count > 0.
         """
-        total = (await self._session.exec(self._count_stmnt())).one()
+        stmnt = self._count_stmnt()
+        slot = self._slot("qb.count", stmnt)
+        if slot:
+            hit = await a_lookup(*slot)
+            if isinstance(hit, dict) and isinstance(hit.get("count"), int):
+                return True, hit["count"]
+        total = (await self._session.exec(stmnt)).one()
+        if slot and total > 0:
+            await a_store(*slot, {"count": total}, self._cache_ttl)
         return total > 0, total

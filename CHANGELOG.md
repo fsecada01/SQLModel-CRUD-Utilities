@@ -7,9 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.0] - 2026-10-09
+## [0.4.0] - 2026-10-10
+
+### Fixed
+- Caching hardening (ADR-0012, #36): `RedisCache` index sets now expire,
+  and an entry and its index membership are written atomically (Redis 7+
+  for `PEXPIRE NX/GT`). A TTL of zero or less stores nothing and fractional
+  TTLs are honoured, matching `InMemoryCache`. An async Redis client raises
+  `TypeError` instead of silently missing. Cached values no longer pass
+  through custom `field_serializer`s, so a hit equals a database read.
+  `transaction()` / `a_transaction()` invalidate the written models after
+  commit.
+- Importing `sync` / `a_sync` with `SQL_DIALECT` unset (or invalid) now raises
+  a clear `ValueError` naming `SQL_DIALECT` instead of
+  `No module named 'sqlalchemy.dialects.None'` (#41). `a_sync.get_rows` already
+  uses `session.exec()` like `sync.get_rows`; a parity test now pins it (#41).
 
 ### Added
+- Query builder caching (ADR-0015, #38): `QueryBuilder.cached(ttl=None)` /
+  `AsyncQueryBuilder.cached(ttl=None)` let `all()`, `first()` and `count()`
+  read from and fill the ADR-0012 cache. Keys cover the composed statement
+  and its bound values; entries sit in the model's namespace, so every write
+  helper, the bulk helpers and `invalidate_cache()` already drop them.
+  Builders with a caller `stmnt`, `selectin()` / `lazy()`, a second table or
+  raw `text()` in the statement bypass the cache, like `get_rows`. Opt-in;
+  uncached builders behave as before.
+- Docs recipes for calling the helpers from a Strawberry or Graphene
+  GraphQL resolver (mapping `(success, data)` to GraphQL errors) and for
+  using Alembic with the mixins, including adding `HISTORY_METADATA` to
+  `target_metadata` (ADR-0013, ADR-0014, #39).
+- Query builder `selectin()` / `lazy()` loader methods and `get_rows`-style
+  suffix filters (`__gte`, `__gt`, `__lte`, `__lt`, `__like`, `__in`) in
+  `where()`, sync and async (ADR-0010 amended, #37).
 - Fluent query builder: `QueryBuilder` (sync) and `AsyncQueryBuilder`
   (async), exported from the package root, with `where`, `order_by`,
   `limit`, `offset` and the terminals `all`, `first` and `count`. Builders
@@ -61,6 +90,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rows (#11). Behavior change: a custom `stmnt` now runs exactly as given and
   the caller owns its pagination; `page`/`page_size` only affect statements
   built internally.
+
+## [0.2.1] - 2026-04-25
+
+### Added
+- Documentation site pages `docs/index.html` (landing page),
+  `docs/use-cases.html` and `docs/recipes.html`, alongside the regenerated
+  API reference.
+
+### Changed
+- `README.md` updated for the 0.2.0 features: usage examples, the exceptions,
+  transactions and mixins modules, and PyPI, CI and license badges.
+- `docs/make.py` now generates the API reference with `pdoc` while
+  preserving the custom landing page, use-cases and recipes pages, fixing the
+  docs workflow failure caused by the missing script.
+
+### Fixed
+- `Repository` and `Bug Tracker` URLs in `pyproject.toml` now point to
+  `fsecada01/SQLModel-CRUD-Utilities`; version bumped to 0.2.1.
+- Release workflow: the `build`, `create_release` and `publish_pypi` jobs
+  were skipped on `v*` tag pushes because they only matched
+  `refs/heads/release/*`. They now run on tag pushes and `release/*` branch
+  pushes, and the tag name is extracted correctly from either ref type.
 
 ## [0.2.0] - 2026-02-16
 
@@ -123,5 +174,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [unreleased]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.4.0...HEAD
 [0.4.0]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.2.1...v0.3.0
+[0.2.1]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/releases/tag/v0.1.0
