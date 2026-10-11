@@ -85,6 +85,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the caller owns its pagination; `page`/`page_size` only affect statements
   built internally.
 
+## [0.2.1] - 2026-04-25
+
+### Added
+- Documentation site pages `docs/index.html` (landing page),
+  `docs/use-cases.html` and `docs/recipes.html`, alongside the regenerated
+  API reference.
+
+### Changed
+- `README.md` updated for the 0.2.0 features: usage examples, the exceptions,
+  transactions and mixins modules, and PyPI, CI and license badges.
+- `docs/make.py` now generates the API reference with `pdoc` while
+  preserving the custom landing page, use-cases and recipes pages, fixing the
+  docs workflow failure caused by the missing script.
+
+### Fixed
+- `Repository` and `Bug Tracker` URLs in `pyproject.toml` now point to
+  `fsecada01/SQLModel-CRUD-Utilities`; version bumped to 0.2.1.
+- Release workflow: the `build`, `create_release` and `publish_pypi` jobs
+  were skipped on `v*` tag pushes because they only matched
+  `refs/heads/release/*`. They now run on tag pushes and `release/*` branch
+  pushes, and the tag name is extracted correctly from either ref type.
+
 ## [0.2.0] - 2026-02-16
 
 ### Added
@@ -145,5 +167,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [unreleased]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.3.0...HEAD
 [0.3.0]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.2.1...v0.3.0
+[0.2.1]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/releases/tag/v0.1.0
