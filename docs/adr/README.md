@@ -39,11 +39,12 @@ Options rejected and why. Omit the section if there are none.
 | [0008](0008-keep-v0-2-0-additive-and-backward-compatible.md) | Keep v0.2.0 additive and backward compatible | accepted |
 | [0009](0009-make-loguru-optional-and-use-uv.md) | Make loguru optional and replace requirements files with uv | accepted |
 | [0010](0010-add-fluent-query-builder.md) | Add an opt-in fluent query builder | accepted (amended in #37: loader methods and suffix filters; amended by 0015: cache integration) |
-| [0011](0011-add-opt-in-change-tracking.md) | Add opt-in change tracking in a separate history table | accepted |
-| [0012](0012-add-opt-in-read-caching.md) | Add opt-in read caching with a pluggable backend | accepted (amended by 0015: query builder integration) |
+| [0011](0011-add-opt-in-change-tracking.md) | Add opt-in change tracking in a separate history table | accepted (amended by 0016: bulk_upsert_mappings update_columns) |
+| [0012](0012-add-opt-in-read-caching.md) | Add opt-in read caching with a pluggable backend | accepted (amended by 0015: query builder integration; amended by 0016: bulk_upsert_mappings update_columns) |
 | [0013](0013-do-not-build-migration-utilities.md) | Do not build migration utilities | accepted |
 | [0014](0014-do-not-build-graphql-support.md) | Do not build GraphQL support | accepted |
 | [0015](0015-let-query-builder-use-the-cache.md) | Let the query builder use the read cache | accepted (amends 0010 and 0012) |
+| [0016](0016-let-bulk-upsert-restrict-updated-columns.md) | Let bulk_upsert_mappings restrict the columns updated on conflict | accepted (amends 0011 and 0012) |
 
 ## Provenance
 

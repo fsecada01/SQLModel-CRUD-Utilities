@@ -1,6 +1,6 @@
 # 0012. Add opt-in read caching with a pluggable backend
 
-- Status: accepted (amended by 0015: query builder integration)
+- Status: accepted (amended by 0015: query builder integration; amended by 0016: bulk_upsert_mappings update_columns)
 - Date: 2026-10-09
 
 ## Context

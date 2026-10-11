@@ -1,6 +1,6 @@
 # 0011. Add opt-in change tracking in a separate history table
 
-- Status: accepted
+- Status: accepted (amended by 0016: bulk_upsert_mappings update_columns)
 - Date: 2026-10-09
 
 ## Context

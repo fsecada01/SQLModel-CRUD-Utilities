@@ -57,6 +57,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inserts, updates and deletes with old and new values. The bulk helpers use
   Core statements and are not tracked. The history table is not created
   unless you call `HISTORY_METADATA.create_all()`.
+- `bulk_upsert_mappings()` / `a_bulk_upsert_mappings()` accept an optional
+  trailing `update_columns` sequence that restricts the columns written on
+  conflict (`ON CONFLICT ... DO UPDATE SET` lists only those columns); new
+  rows still insert every provided column. Unknown, primary-key,
+  conflict-target and not-in-payload columns, an empty sequence and a bare
+  string raise `ValueError` before any statement runs. Default `None` keeps
+  updating every provided column (ADR-0016, #50).
 
 ## [0.3.0] - 2026-10-08
 
