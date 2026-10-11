@@ -1,5 +1,7 @@
 """ """
 
+from typing import Sequence
+
 from dateutil.parser import parse as date_parse
 from dotenv import load_dotenv
 from sqlalchemy.exc import MultipleResultsFound
@@ -29,8 +31,12 @@ from sqlmodel_crud_utils.utils import (
     get_val,
     is_date,
     logger,
+    soft_delete_statement,
+    soft_delete_timestamp,
     validate_primary_key_field,
+    validate_soft_delete_args,
     validate_update_columns,
+    validate_upsert_update_columns,
 )
 
 load_dotenv()  # take environment variables from .env.
@@ -534,36 +540,66 @@ async def delete_rows_within_id_list(
     model: type[SQLModel],
     pk_field: str = "id",
     chunk_size: int = 500,
+    soft: bool = False,
+    deleted_by: str | None = None,
 ) -> tuple[bool, int]:
     """
     Deletes every row whose primary key is within the provided list and
     commits once. IDs with no matching row are ignored.
 
-    This is a hard SQL ``DELETE``: it bypasses ``SoftDeleteMixin`` (rows are
-    removed, not marked with ``deleted_at``) and any ORM-level hooks. The ID
-    list is split into ``chunk_size`` batches to stay under backend
-    bind-parameter limits. One ``DELETE ... WHERE pk IN (...)`` statement is
-    sent per batch (never per row), so 1,200 IDs at the default size is 3
-    statements. All batches share one transaction, so the call is
-    all-or-nothing.
+    By default this is a hard SQL ``DELETE``: rows are removed, even for a
+    model that uses ``SoftDeleteMixin`` (nothing is marked with
+    ``deleted_at``), and ORM-level hooks do not run. Pass ``soft=True`` to
+    mark the rows deleted instead, exactly as ``SoftDeleteMixin.soft_delete``
+    does: ``is_deleted`` becomes true, ``deleted_at`` is the current UTC time
+    (one timestamp for the whole call) and ``deleted_by`` is the given user.
+    The soft path is a Core ``UPDATE``, so the same bulk-write rules as
+    ``bulk_update_rows`` apply: column-level ``onupdate`` defaults fire (for
+    example ``updated_at`` of ``TimestampMixin`` and ``AuditMixin``), while
+    ``updated_by`` is not set and ORM events and change tracking do not see
+    the write. Rows already soft-deleted are left untouched (their original
+    ``deleted_at`` and ``deleted_by`` are kept) and are not counted.
+
+    The ID list is split into ``chunk_size`` batches to stay under backend
+    bind-parameter limits. One ``DELETE`` (or ``UPDATE``) ``... WHERE pk IN
+    (...)`` statement is sent per batch (never per row), so 1,200 IDs at the
+    default size is 3 statements. All batches share one transaction, so the
+    call is all-or-nothing. The model's cache entries are invalidated after
+    the commit in both modes.
 
     :param id_str_list: List of primary key values to delete.
     :param session_inst: SQLModel AsyncSession instance.
     :param model: SQLModel class representing the table.
     :param pk_field: Primary-key column to match against (default: "id").
-    :param chunk_size: Maximum IDs per DELETE statement (default: 500).
-    :return: Tuple[bool, int]: ``True`` and the number of rows deleted. The
+    :param chunk_size: Maximum IDs per statement (default: 500).
+    :param soft: When ``True``, soft-delete instead of removing the rows.
+        The model must have the ``SoftDeleteMixin`` columns ``is_deleted``,
+        ``deleted_at`` and ``deleted_by`` (default: ``False``).
+    :param deleted_by: User recorded in ``deleted_by`` on soft-deleted rows.
+        Only valid with ``soft=True`` (default: ``None``).
+    :return: Tuple[bool, int]: ``True`` and the number of rows affected: rows
+        removed for a hard delete, or rows newly marked deleted for a soft
+        delete (rows that were already soft-deleted are not counted). The
         count is 0 when nothing matched or the list was empty.
     :raises ValueError: If ``pk_field`` is not a primary-key column of
-        ``model`` or ``chunk_size`` is not positive.
+        ``model``, ``chunk_size`` is not positive, ``soft=True`` is used on a
+        model without the ``SoftDeleteMixin`` columns (the message names the
+        missing ones), or ``deleted_by`` is given without ``soft=True``.
     :raises Exception: Any database error, after the transaction has been
         rolled back and the error logged.
     """
     validate_primary_key_field(model, pk_field)
+    validate_soft_delete_args(model, soft, deleted_by)
+    deleted_at = soft_delete_timestamp() if soft else None
     deleted = 0
     try:
         for chunk in chunked(id_str_list, chunk_size):
-            stmnt = delete(model).where(getattr(model, pk_field).in_(chunk))
+            if soft:
+                stmnt = soft_delete_statement(
+                    model, pk_field, chunk, deleted_at, deleted_by
+                )
+            else:
+                stmnt = delete(model).where(getattr(model, pk_field).in_(chunk))
             result = await session_inst.exec(stmnt)
             deleted += max(result.rowcount, 0)
         await session_inst.commit()
@@ -588,10 +624,13 @@ async def bulk_update_rows(
     Applies the same column values to every row whose primary key is within
     the provided list and commits once. IDs with no matching row are ignored.
 
-    This is a Core ``UPDATE``: ORM-level hooks and Python-side defaults do
-    not run, so ``AuditMixin.updated_at``/``updated_by`` are not refreshed
-    unless the caller includes them in ``data`` (column-level ``onupdate``
-    defaults, such as ``TimestampMixin.updated_at``, do fire). The ID list is
+    This is a Core ``UPDATE``, so ORM-level hooks and change tracking
+    (ADR-0011) do not see it. Column-level ``onupdate`` defaults do fire, so
+    ``updated_at`` is refreshed for both ``TimestampMixin`` and
+    ``AuditMixin``. Nothing else is filled in: ``AuditMixin.updated_by`` is
+    only set when the caller includes it in ``data``, and
+    ``SoftDeleteMixin`` fields (``is_deleted``, ``deleted_at``,
+    ``deleted_by``) are only changed if named in ``data``. The ID list is
     split into ``chunk_size`` batches. One ``UPDATE ... WHERE pk IN (...)``
     statement is sent per batch (never per row), and all batches share one
     transaction.
@@ -676,6 +715,7 @@ async def bulk_upsert_mappings(
     session_inst: AsyncSession,
     model: type[SQLModel],
     pk_fields: list[str] | None = None,
+    update_columns: Sequence[str] | None = None,
 ):
     """
     Insert or update a batch of rows in a single ``INSERT ... ON CONFLICT DO
@@ -696,14 +736,31 @@ async def bulk_upsert_mappings(
     :param session_inst: Active session.
     :param model: Table model being upserted.
     :param pk_fields: Conflict-target columns. Defaults to ``["id"]``.
+    :param update_columns: Restrict the columns written on conflict to
+        these (the ``SET`` clause of ``ON CONFLICT DO UPDATE``, ADR-0016).
+        Defaults to ``None``: every column in the first mapping is
+        overwritten. New rows are always inserted with every provided
+        column. Names are table column keys, as in ``payload``; duplicates
+        are ignored.
     :return: ``(True, rows)`` where ``rows`` are the upserted model instances.
+    :raises ValueError: Before any statement is sent, if ``update_columns``
+        is empty or a bare string, names an unknown column, a primary-key
+        column or a ``pk_fields`` column, or names a column the first
+        mapping of ``payload`` does not provide.
     """
     if not pk_fields:
         pk_fields = ["id"]
+    if update_columns is not None:
+        update_columns = validate_upsert_update_columns(
+            model, payload, pk_fields, update_columns
+        )
+    set_columns = (
+        payload[0].keys() if update_columns is None else update_columns
+    )
     stmnt = upsert(model).values(payload)
     stmnt = stmnt.on_conflict_do_update(
         index_elements=[getattr(model, x) for x in pk_fields],
-        set_={k: getattr(stmnt.excluded, k) for k in payload[0].keys()},
+        set_={k: getattr(stmnt.excluded, k) for k in set_columns},
     )
     results = (
         await session_inst.scalars(

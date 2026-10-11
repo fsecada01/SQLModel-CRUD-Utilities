@@ -179,7 +179,7 @@ Migration utilities (ADR-0013) and GraphQL support (ADR-0014) were evaluated and
     -   `delete_row`: Deletes a row by primary key.
     -   `write_row`: Inserts a single new row.
     -   `insert_data_rows`: Inserts multiple new rows with fallback for individual insertion on bulk failure.
-    -   `bulk_upsert_mappings`: Performs bulk insert-or-update operations (dialect-aware).
+    -   `bulk_upsert_mappings`: Performs bulk insert-or-update operations (dialect-aware). Pass `update_columns=[...]` to write only those columns on conflict.
 -   **Custom Exception Hierarchy:** Detailed exceptions for better error handling and debugging.
 -   **Transaction Context Managers:** Safe transaction handling with automatic commit/rollback.
 -   **Audit Trail Mixins:** Automatic timestamp and user tracking (`AuditMixin`).
@@ -274,7 +274,7 @@ This package requires the `SQL_DIALECT` environment variable to be set for the `
 
 Set it in your environment:
 ```bash
-export SQL_DIALECT=postgresql # or sqlite, mysql, etc
+export SQL_DIALECT=postgresql # or sqlite
 ```
 
 Or add it to a `.env` file in your project root (will be loaded automatically via `python-dotenv`):
@@ -284,6 +284,8 @@ SQL_DIALECT=postgresql
 ```
 
 Refer to [SQLAlchemy Dialects](https://docs.sqlalchemy.org/en/20/dialects/) for a list of supported dialect names.
+
+> **Note:** `bulk_upsert_mappings` / `a_bulk_upsert_mappings` support PostgreSQL and SQLite only. MySQL is not supported for upserts and raises `AttributeError` (its insert has no `on_conflict_do_update` or `RETURNING`; see ADR-0016).
 
 ###  Installation
 
@@ -537,6 +539,35 @@ with Session(engine) as session:
     session.commit()
 
     print(f"Order deleted at {order.deleted_at} by {order.deleted_by}")
+```
+
+#### Mixins and the bulk helpers
+
+`bulk_update_rows` and `delete_rows_within_id_list` send one Core statement per
+batch of IDs, so they behave differently from the per-instance methods:
+
+- Column-level `onupdate` defaults fire, so `updated_at` is refreshed for both
+  `TimestampMixin` and `AuditMixin`. `updated_by` is **not** set unless you put
+  it in `data`.
+- `SoftDeleteMixin` fields are not set by `bulk_update_rows`. A bulk delete is a
+  hard `DELETE` unless you pass `soft=True`, which marks the rows exactly as
+  `soft_delete()` does and skips rows that are already deleted. The returned
+  count is the number of rows newly marked.
+- ORM events and change tracking do not see bulk writes.
+
+```python
+from sqlmodel_crud_utils import bulk_update_rows, delete_rows_within_id_list
+
+# updated_at refreshes by itself; updated_by only because we pass it.
+bulk_update_rows([1, 2], {"total": 0, "updated_by": "admin"}, session, Order)
+
+# Soft delete (is_deleted, deleted_at, deleted_by); rows stay in the table.
+ok, count = delete_rows_within_id_list(
+    [1, 2, 3], session, Order, soft=True, deleted_by="admin"
+)
+
+# Default: the rows are removed.
+ok, count = delete_rows_within_id_list([4, 5], session, Order)
 ```
 
 ###  Testing
