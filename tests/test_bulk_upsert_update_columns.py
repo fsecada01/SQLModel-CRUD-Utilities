@@ -11,10 +11,10 @@ from unittest.mock import MagicMock
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import create_engine, event, select
+from sqlalchemy import Column, String, create_engine, event, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.ext.asyncio import create_async_engine
-from sqlmodel import Session, SQLModel
+from sqlmodel import Field, Session, SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 import sqlmodel_crud_utils as scu
@@ -32,6 +32,18 @@ INCOMING = [
     {"id": 1, "name": "renamed", "value": 11, "related_field_id": None},
     {"id": 3, "name": "third", "value": 30, "related_field_id": None},
 ]
+
+
+class AliasedModel(SQLModel, table=True):
+    """Attribute name (``aliased``) differs from column key (``db_aliased``)."""
+
+    __tablename__ = "update_columns_aliased"
+
+    id: int | None = Field(default=None, primary_key=True)
+    aliased: str = Field(
+        sa_column=Column("db_aliased", String(collation="NOCASE"), unique=True)
+    )
+    other: str = "x"
 
 
 class Counter:
@@ -249,6 +261,90 @@ def test_sync_non_string_elements_raise_value_error(session, columns):
             INCOMING, session, MockModel, update_columns=columns
         )
     assert session.counter.statements == []
+
+
+# --- attribute name != column key (ADR-0016 Consequences) --------------------
+
+
+def _aliased_session(tmp_path):
+    eng = create_engine(f"sqlite:///{tmp_path / 'aliased.sqlite'}")
+    SQLModel.metadata.create_all(eng)
+    return eng
+
+
+def test_aliased_model_column_keys_differ_from_attribute_names():
+    keys = [c.key for c in AliasedModel.__table__.columns]
+    assert "db_aliased" in keys
+    assert "aliased" not in keys
+
+
+def test_aliased_attribute_name_in_update_columns_is_unknown(tmp_path):
+    """update_columns are table column keys, so the attribute name is not."""
+    eng = _aliased_session(tmp_path)
+    with Session(eng) as session:
+        with pytest.raises(ValueError, match="aliased"):
+            sync.bulk_upsert_mappings(
+                [{"db_aliased": "a", "other": "o"}],
+                session,
+                AliasedModel,
+                pk_fields=["aliased"],
+                update_columns=["aliased"],
+            )
+    eng.dispose()
+
+
+def test_aliased_conflict_column_via_attribute_name_is_a_noop(tmp_path):
+    """
+    ``pk_fields`` are attribute names, ``update_columns`` are column keys,
+    so the conflict-target check cannot match them. The statement is still
+    valid and rewrites the conflict column with the value it already has.
+    """
+    eng = _aliased_session(tmp_path)
+    with Session(eng) as session:
+        sync.bulk_upsert_mappings(
+            [{"id": 1, "db_aliased": "a", "other": "o"}],
+            session,
+            AliasedModel,
+        )
+        ok, rows = sync.bulk_upsert_mappings(
+            [{"db_aliased": "a", "other": "new"}],
+            session,
+            AliasedModel,
+            pk_fields=["aliased"],
+            update_columns=["db_aliased", "other"],
+        )
+        assert ok is True
+        assert [(r.id, r.aliased, r.other) for r in rows] == [(1, "a", "new")]
+    with Session(eng) as session:
+        stored = session.exec(select(AliasedModel)).scalars().all()
+        assert [(r.id, r.aliased, r.other) for r in stored] == [(1, "a", "new")]
+    eng.dispose()
+
+
+def test_aliased_conflict_column_noop_can_change_collation_case(tmp_path):
+    """
+    The one visible effect: under a case-insensitive collation the
+    "no-op" ``SET db_aliased = excluded.db_aliased`` stores the incoming
+    spelling. Listing the conflict column is the caller's explicit request.
+    """
+    eng = _aliased_session(tmp_path)
+    with Session(eng) as session:
+        sync.bulk_upsert_mappings(
+            [{"id": 1, "db_aliased": "abc", "other": "o"}],
+            session,
+            AliasedModel,
+        )
+        sync.bulk_upsert_mappings(
+            [{"db_aliased": "ABC", "other": "o2"}],
+            session,
+            AliasedModel,
+            pk_fields=["aliased"],
+            update_columns=["db_aliased"],
+        )
+    with Session(eng) as session:
+        stored = session.exec(select(AliasedModel)).scalars().all()
+        assert [(r.id, r.aliased, r.other) for r in stored] == [(1, "ABC", "o")]
+    eng.dispose()
 
 
 def test_sync_column_absent_from_payload_is_rejected(session):

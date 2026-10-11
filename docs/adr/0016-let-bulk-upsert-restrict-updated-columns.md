@@ -40,6 +40,8 @@ The `(True, rows)` return value, the single `RETURNING` statement, the pre-commi
 - Passing `update_columns` is not a way to write different values on conflict than on insert; for that, callers still need their own statement.
 - The first mapping's keys remain load-bearing (inherited, not new): a later mapping with an extra key has it silently dropped from the `INSERT`, and a later mapping missing a key the first one has fails at compile time.
 - `update_columns` cannot include the conflict target. A conflict on a non-primary-key unique column therefore also protects that column, which is the least surprising outcome and is easy to relax later.
+- `pk_fields` are model attribute names (they go through `getattr(model, name)`), while `update_columns` and payload keys are table column keys. For a model whose attribute name differs from its column key (`aliased: str = Field(sa_column=Column("db_aliased", String))`), the conflict-target check therefore cannot match `pk_fields=["aliased"]` against `update_columns=["db_aliased"]`. This was reproduced on SQLite: the statement is valid and the conflict column is rewritten with the value it already has, so it is a no-op for the row, with one visible exception: under a case-insensitive collation the incoming spelling is stored. Passing the attribute name in `update_columns` is rejected as an unknown column. Pinned in `tests/test_bulk_upsert_update_columns.py` (`test_aliased_*`); not worth a translation layer in the validator.
+- Every `update_columns` element must be a `str`; anything else (including unhashable elements and mixed types) is a `ValueError`, like the other bad inputs.
 - Revisit if MySQL support is wanted (`on_duplicate_key_update`, no `RETURNING`).
 
 ## Alternatives considered
