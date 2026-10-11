@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-11
+
 ### Fixed
 - `bulk_update_rows` / `a_bulk_update_rows` docstrings (and ADR-0004,
   `CLAUDE.md`) wrongly said `AuditMixin.updated_at` is not refreshed by bulk
@@ -78,6 +80,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   conflict-target and not-in-payload columns, an empty sequence and a bare
   string raise `ValueError` before any statement runs. Default `None` keeps
   updating every provided column (ADR-0016, #50).
+
+### Decisions
+- Migration utilities are not built; use Alembic directly (ADR-0013, #26).
+- GraphQL support is not built (ADR-0014, #27).
 
 ## [0.3.0] - 2026-10-08
 
@@ -186,7 +192,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Code quality tools: `black`, `isort`, `ruff`
 - Pre-commit hooks configuration
 
-[unreleased]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.3.0...HEAD
+[unreleased]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/fsecada01/SQLModel-CRUD-Utilities/compare/v0.1.0...v0.2.0

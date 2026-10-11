@@ -359,15 +359,12 @@ def search_products(
     if created_before:
         filters["created_at__lte"] = created_before
 
-    # Calculate pagination
-    offset = (page - 1) * page_size
-
     # Execute query
     success, products = get_rows(
         session_inst=session,
         model=Product,
-        offset=offset,
-        limit=page_size,
+        page=page,
+        page_size=page_size,
         sort_field=sort_by,
         sort_desc=sort_desc,
         **filters
@@ -486,7 +483,7 @@ def get_posts_cursor_paginated(
     success, posts = get_rows(
         session_inst=session,
         model=Post,
-        limit=limit,
+        page_size=limit,
         sort_field="id",
         sort_desc=False,  # Important: consistent sort order
         **filters
@@ -525,7 +522,7 @@ def get_posts_time_based_cursor(
     success, posts = get_rows(
         session_inst=session,
         model=Post,
-        limit=limit,
+        page_size=limit,
         sort_field="created_at",
         sort_desc=True,
         **filters
@@ -705,7 +702,7 @@ def process_with_retry(
         model=ImportRecord,
         status="pending",
         retry_count__lt=max_retries,
-        limit=1000
+        page_size=1000
     )
 
     if not success or not pending:
@@ -717,7 +714,7 @@ def process_with_retry(
         # Mark as processing
         update_row(
             id_str=record.id,
-            data_dict={"status": "processing"},
+            data={"status": "processing"},
             model=ImportRecord,
             session_inst=session
         )
@@ -730,7 +727,7 @@ def process_with_retry(
             # Mark as success
             update_row(
                 id_str=record.id,
-                data_dict={"status": "success", "error_message": None},
+                data={"status": "success", "error_message": None},
                 model=ImportRecord,
                 session_inst=session
             )
@@ -746,7 +743,7 @@ def process_with_retry(
                 # Max retries exceeded
                 update_row(
                     id_str=record.id,
-                    data_dict={
+                    data={
                         "status": "failed",
                         "retry_count": new_retry_count,
                         "error_message": f"Max retries exceeded: {str(e)}"
@@ -759,7 +756,7 @@ def process_with_retry(
                 # Mark for retry
                 update_row(
                     id_str=record.id,
-                    data_dict={
+                    data={
                         "status": "pending",
                         "retry_count": new_retry_count,
                         "error_message": str(e)
@@ -892,7 +889,7 @@ def update_balance_safe(
     # Update with version increment
     success, updated = update_row(
         id_str=account_id,
-        data_dict={
+        data={
             "balance": new_balance,
             "version": account.version + 1,
             "updated_by": user
@@ -1305,7 +1302,7 @@ def get_user_with_posts_efficient(session: Session, user_id: int):
 # BAD: N+1 query problem
 def get_users_with_post_count_slow(session: Session):
     """This creates N+1 queries - AVOID THIS"""
-    _, users = get_rows(session_inst=session, model=User, limit=100)
+    _, users = get_rows(session_inst=session, model=User, page_size=100)
     result = []
     for user in users:
         # Each iteration queries the database again!
@@ -1345,13 +1342,13 @@ def get_users_with_post_count_fast(session: Session):
 # 4. Use pagination for large datasets
 def get_all_users_paginated(session: Session, batch_size: int = 100):
     """Process large datasets in batches"""
-    offset = 0
+    page = 1
     while True:
         _, batch = get_rows(
             session_inst=session,
             model=User,
-            offset=offset,
-            limit=batch_size,
+            page=page,
+            page_size=batch_size,
             sort_field="id"
         )
 
@@ -1359,7 +1356,7 @@ def get_all_users_paginated(session: Session, batch_size: int = 100):
             break
 
         yield batch
-        offset += batch_size
+        page += 1
 
 # Usage
 for user_batch in get_all_users_paginated(session):
@@ -1378,7 +1375,7 @@ def bulk_update_efficient(session: Session, user_ids: List[int], updates: dict):
     bulk_upsert_mappings(
         session_inst=session,
         model=User,
-        data_mappings=mappings
+        payload=mappings
     )
 
 # 6. Use connection pooling for concurrent access
@@ -1416,7 +1413,7 @@ def get_active_users_recent(session: Session):
         status="active",
         created_at__gte=thirty_days_ago,
         sort_field="created_at",
-        limit=1000
+        page_size=1000
     )
     return users</code></pre>
                     </div>
@@ -1579,7 +1576,7 @@ def test_update_user(session):
     # Act
     success, updated_user = update_row(
         id_str=user.id,
-        data_dict={"username": "newname", "email": "new@example.com"},
+        data={"username": "newname", "email": "new@example.com"},
         model=User,
         session_inst=session
     )
@@ -1621,8 +1618,8 @@ def test_pagination(session):
     success, page2_users = get_rows(
         session_inst=session,
         model=User,
-        offset=10,
-        limit=10,
+        page=2,
+        page_size=10,
         sort_field="id"
     )
 

@@ -40,7 +40,9 @@ def get_sql_dialect_import(dialect: str):
     """
     A utility function to dynamically load the correct SQL Dialect from the
     SQLAlchemy package.
-    :param dialect: str, e.g. ``postgresql``, ``sqlite`` or ``mysql``.
+    :param dialect: str, e.g. ``postgresql`` or ``sqlite``. Upserts
+        (``bulk_upsert_mappings``) support only these two; ``mysql`` loads
+        but upserting raises ``AttributeError`` (ADR-0016).
 
     :return: func
     :raises ValueError: if ``dialect`` is unset/blank or is not a SQLAlchemy
