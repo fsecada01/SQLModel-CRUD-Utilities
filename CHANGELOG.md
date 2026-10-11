@@ -22,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   uses `session.exec()` like `sync.get_rows`; a parity test now pins it (#41).
 
 ### Added
+- Query builder caching (ADR-0015, #38): `QueryBuilder.cached(ttl=None)` /
+  `AsyncQueryBuilder.cached(ttl=None)` let `all()`, `first()` and `count()`
+  read from and fill the ADR-0012 cache. Keys cover the composed statement
+  and its bound values; entries sit in the model's namespace, so every write
+  helper, the bulk helpers and `invalidate_cache()` already drop them.
+  Builders with a caller `stmnt`, `selectin()` / `lazy()`, a second table or
+  raw `text()` in the statement bypass the cache, like `get_rows`. Opt-in;
+  uncached builders behave as before.
 - Docs recipes for calling the helpers from a Strawberry or Graphene
   GraphQL resolver (mapping `(success, data)` to GraphQL errors) and for
   using Alembic with the mixins, including adding `HISTORY_METADATA` to

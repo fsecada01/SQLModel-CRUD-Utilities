@@ -1,5 +1,6 @@
 import importlib
 import logging
+import math
 import os
 from typing import Any, Iterator, Sequence
 
@@ -8,6 +9,9 @@ from sqlalchemy import func
 from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.orm import lazyload, selectinload
 from sqlalchemy.sql import operators
+from sqlalchemy.sql.elements import ColumnClause, TextClause
+from sqlalchemy.sql.selectable import TableClause
+from sqlalchemy.sql.visitors import iterate
 from sqlmodel import select
 
 try:
@@ -140,6 +144,30 @@ _SUFFIX_OPS = {
 }
 
 
+def reads_only_table(stmnt: Any, table: Any) -> bool:
+    """
+    Whether ``stmnt`` reads nothing but ``table``.
+
+    Used to decide if a query can be cached under ``table``'s namespace: a
+    statement that pulls in another table (join, subquery, correlated
+    column) would not be invalidated by writes to ``table``. Raw ``text()``
+    and ``literal_column()`` fragments count as unknown and return False.
+
+    :param stmnt: SQLAlchemy statement or clause.
+    :param table: The one allowed ``Table``.
+    """
+    own = (table.schema, table.name)
+    for element in iterate(stmnt):
+        if isinstance(element, TableClause):
+            if (element.schema, element.name) != own:
+                return False
+        elif isinstance(element, TextClause):
+            return False
+        elif isinstance(element, ColumnClause) and element.is_literal:
+            return False
+    return True
+
+
 class QueryBuilderBase:
     """
     Pure statement composition shared by ``QueryBuilder`` and
@@ -149,6 +177,8 @@ class QueryBuilderBase:
     a partially built query can be reused. A caller-supplied ``stmnt`` is the
     starting point and keeps any loader options it carries; builder clauses
     are added on top of it.
+
+    Terminals read from and fill the cache only after ``cached()`` (ADR-0015).
 
     :param session_inst: Session used by the subclass terminal methods.
     :param model: SQLModel table class being queried.
@@ -160,11 +190,57 @@ class QueryBuilderBase:
         self._model = model
         self._stmnt = select(model) if stmnt is None else stmnt
         self._loaders: dict[str, str] = {}
+        self._custom_stmnt = stmnt is not None
+        self._use_cache = False
+        self._cache_ttl: float | None = None
 
     def _derive(self, stmnt: Any, loaders: dict[str, str] | None = None):
         builder = type(self)(self._session, self._model, stmnt)
         builder._loaders = self._loaders if loaders is None else loaders
+        builder._custom_stmnt = self._custom_stmnt
+        builder._use_cache = self._use_cache
+        builder._cache_ttl = self._cache_ttl
         return builder
+
+    def cached(self, ttl: float | None = None):
+        """
+        Let ``all``, ``first`` and ``count`` use the cache (ADR-0015).
+
+        Needs a backend from ``configure_cache``; without one this is a
+        no-op. Calls bypass the cache, like ``get_rows``, when the builder
+        was given a ``stmnt``, uses ``selectin`` or ``lazy``, or the
+        composed statement reads another table or raw SQL. Only non-empty
+        results are stored, and a hit rebuilds session-detached instances.
+        Writes made through the library's helpers invalidate the entries.
+
+        :param ttl: Seconds an entry lives; the backend default when None.
+        :raises ValueError: If ``ttl`` is negative, NaN or not a number.
+        :return: A new builder.
+        """
+        if ttl is not None and (
+            isinstance(ttl, bool)
+            or not isinstance(ttl, (int, float))
+            or math.isnan(ttl)
+            or ttl < 0
+        ):
+            raise ValueError("ttl must be None or a non-negative number")
+        builder = self._derive(self._stmnt)
+        builder._use_cache = True
+        builder._cache_ttl = ttl
+        return builder
+
+    def _cache_eligible(self) -> bool:
+        """Whether the terminals may use the cache.
+
+        ``first`` and ``count`` derive from the same base statement, so it
+        alone decides (the derived ``count(*)`` is itself a literal column).
+        """
+        return (
+            self._use_cache
+            and not self._custom_stmnt
+            and not self._loaders
+            and reads_only_table(self._stmnt, self._model.__table__)
+        )
 
     def _column(self, name: str):
         if name not in self._model.__table__.columns:

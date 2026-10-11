@@ -17,6 +17,7 @@ from sqlmodel_crud_utils.cache import (
     lookup,
     make_key,
     namespace_for,
+    query_slot,
     store,
 )
 from sqlmodel_crud_utils.tracking import history_select
@@ -801,21 +802,48 @@ class QueryBuilder(QueryBuilderBase):
     Chain ``where``, ``order_by``, ``limit`` and ``offset``, then finish with
     ``all``, ``first`` or ``count``. Terminals return the library's
     ``(success, data)`` tuple where ``success`` is True when rows exist.
+    Chain ``cached()`` to read from and fill the cache (ADR-0015).
     """
+
+    def _slot(self, op, stmnt):
+        return query_slot(
+            self._session,
+            self._model,
+            op,
+            stmnt,
+            self._cache_eligible(),
+        )
 
     def all(self):
         """
         :return: ``(success, rows)``; ``rows`` is an empty list when nothing
             matched.
         """
+        slot = self._slot("qb.all", self._stmnt)
+        if slot:
+            hit = lookup(*slot)
+            rows = load_rows(self._model, hit) if hit is not None else None
+            if rows is not None:
+                return True, rows
         rows = self._session.exec(self._stmnt).unique().all()
+        if slot and rows:
+            store(*slot, dump_rows(rows), self._cache_ttl)
         return len(rows) > 0, rows
 
     def first(self):
         """
         :return: ``(success, row)``; ``row`` is ``None`` when nothing matched.
         """
-        row = self._session.exec(self._first_stmnt()).first()
+        stmnt = self._first_stmnt()
+        slot = self._slot("qb.first", stmnt)
+        if slot:
+            hit = lookup(*slot)
+            row = load_row(self._model, hit) if hit is not None else None
+            if row is not None:
+                return True, row
+        row = self._session.exec(stmnt).first()
+        if slot and row is not None:
+            store(*slot, dump_row(row), self._cache_ttl)
         return row is not None, row
 
     def count(self):
@@ -824,5 +852,13 @@ class QueryBuilder(QueryBuilderBase):
 
         :return: ``(success, count)`` with ``success`` True when count > 0.
         """
-        total = self._session.exec(self._count_stmnt()).one()
+        stmnt = self._count_stmnt()
+        slot = self._slot("qb.count", stmnt)
+        if slot:
+            hit = lookup(*slot)
+            if isinstance(hit, dict) and isinstance(hit.get("count"), int):
+                return True, hit["count"]
+        total = self._session.exec(stmnt).one()
+        if slot and total > 0:
+            store(*slot, {"count": total}, self._cache_ttl)
         return total > 0, total
