@@ -513,7 +513,8 @@ def written_models(session: Any, *models: type[SQLModel]) -> set:
     exactly one commit.
     """
     sync_session = getattr(session, "sync_session", session)
-    found = set(sync_session.info.pop(_TOUCHED, ()))
+    info = getattr(sync_session, "info", None)
+    found = set(info.pop(_TOUCHED, ())) if info is not None else set()
     found.update(models)
     return found
 

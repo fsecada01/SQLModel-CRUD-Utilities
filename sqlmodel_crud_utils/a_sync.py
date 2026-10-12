@@ -36,6 +36,7 @@ from sqlmodel_crud_utils.utils import (
     validate_primary_key_field,
     validate_soft_delete_args,
     validate_update_columns,
+    validate_upsert_payload,
     validate_upsert_update_columns,
 )
 
@@ -750,6 +751,7 @@ async def bulk_upsert_mappings(
     """
     if not pk_fields:
         pk_fields = ["id"]
+    validate_upsert_payload(payload)
     if update_columns is not None:
         update_columns = validate_upsert_update_columns(
             model, payload, pk_fields, update_columns

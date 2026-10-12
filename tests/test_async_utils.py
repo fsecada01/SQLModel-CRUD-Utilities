@@ -779,7 +779,7 @@ async def test_async_bulk_upsert_mappings_success(
     mock_session = await mock_async_session  # Use the awaited fixture
     payload = [
         {"id": 1, "name": "UpdatedName", "value": 999},
-        {"name": "NewUpsert1", "value": 101},  # Insert case (no ID)
+        {"id": 501, "name": "NewUpsert1", "value": 101},  # Insert case
     ]
     upserted_models = [
         MockModel(id=1, name="UpdatedName", value=999),

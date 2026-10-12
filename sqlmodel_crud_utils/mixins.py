@@ -9,12 +9,34 @@ from typing import Optional
 
 from sqlalchemy import Column, DateTime, func
 from sqlalchemy.orm import declared_attr
+from sqlalchemy.types import TypeDecorator
 from sqlmodel import Field
 
 
 def _utc_now() -> datetime:
     """Get current UTC time as timezone-aware datetime."""
     return datetime.now(timezone.utc)
+
+
+class UTCDateTime(TypeDecorator):
+    """A ``DateTime`` column that stores aware values as naive UTC (ADR-0018).
+
+    The mixin timestamps are timezone-aware in Python but the columns are
+    plain ``DateTime`` (no time zone). Handing an aware value to such a
+    column lets the driver decide: psycopg3 converts it using the session
+    ``TimeZone`` (silently shifting the stored wall-clock time) and asyncpg
+    raises ``DataError``. Converting to naive UTC on bind is deterministic
+    on every driver and needs no schema change. Naive values pass through
+    unchanged and reads are untouched, so existing rows keep their meaning.
+    """
+
+    impl = DateTime
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is not None and value.tzinfo is not None:
+            return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value
 
 
 class TimestampMixin:
@@ -110,12 +132,14 @@ class AuditMixin:
 
     created_at: datetime = Field(
         default_factory=_utc_now,
+        sa_type=UTCDateTime,
         nullable=False,
         index=True,
         description="Timestamp when the record was created",
     )
     updated_at: Optional[datetime] = Field(
         default=None,
+        sa_type=UTCDateTime,
         sa_column_kwargs={"onupdate": _utc_now},
         description="Timestamp when the record was last updated",
     )
@@ -194,6 +218,7 @@ class SoftDeleteMixin:
 
     deleted_at: Optional[datetime] = Field(
         default=None,
+        sa_type=UTCDateTime,
         index=True,
         description="Timestamp when the record was soft-deleted",
     )
