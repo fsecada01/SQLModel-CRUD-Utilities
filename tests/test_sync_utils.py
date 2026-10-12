@@ -626,7 +626,7 @@ def test_sync_bulk_upsert_mappings_success(
     # Arrange
     payload = [
         {"id": 1, "name": "SyncUpdatedName", "value": 999},
-        {"name": "SyncNewUpsert1", "value": 101},
+        {"id": 501, "name": "SyncNewUpsert1", "value": 101},
     ]
     upserted_models = [
         MockModel(id=1, name="SyncUpdatedName", value=999),

@@ -195,6 +195,31 @@ def validate_update_columns(model: Any, data: dict) -> None:
         )
 
 
+def validate_upsert_payload(payload: Sequence[dict]) -> None:
+    """
+    Require every mapping of an upsert payload to carry the same keys as
+    the first (ADR-0018).
+
+    The first mapping decides the ``INSERT`` columns and the ``SET`` clause,
+    so a later mapping with an extra key had that value silently dropped,
+    and one missing a key could not be written as intended.
+
+    :param payload: Row mappings passed to the upsert.
+    :raises ValueError: Naming the offending row index and keys.
+    """
+    if not payload:
+        return
+    expected = set(payload[0])
+    for index, mapping in enumerate(payload[1:], start=1):
+        keys = set(mapping)
+        if keys != expected:
+            raise ValueError(
+                "Every payload mapping must have the same keys as the "
+                f"first; row {index} has extra {sorted(keys - expected)} "
+                f"and is missing {sorted(expected - keys)}"
+            )
+
+
 def validate_upsert_update_columns(
     model: Any,
     payload: Sequence[dict],

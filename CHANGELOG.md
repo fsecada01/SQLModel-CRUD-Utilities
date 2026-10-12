@@ -10,6 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.4.0] - 2026-10-11
 
 ### Fixed
+- Mixin timestamps (`AuditMixin.created_at` / `updated_at`,
+  `SoftDeleteMixin.deleted_at`) are bound as naive UTC through the new
+  `UTCDateTime` column type. A tz-aware value written to the plain `DateTime`
+  column was silently shifted by the session `TimeZone` on psycopg3 and
+  raised `DataError` on asyncpg; this affected `soft_delete()` and bulk
+  `soft=True`. No schema change (ADR-0018).
+- `written_models` / `invalidate_written` / `a_invalidate_written` no longer
+  raise `AttributeError` for a session without an `info` mapping.
+- `bulk_upsert_mappings` / `a_bulk_upsert_mappings` raise `ValueError`, before
+  any statement, when payload mappings do not share the first mapping's keys.
+  A later mapping's extra key used to be dropped silently and a missing key
+  failed with `CompileError` (ADR-0018).
+
 - `bulk_update_rows` / `a_bulk_update_rows` docstrings (and ADR-0004,
   `CLAUDE.md`) wrongly said `AuditMixin.updated_at` is not refreshed by bulk
   writes. It is: the column-level `onupdate` fires for a Core `UPDATE`, for

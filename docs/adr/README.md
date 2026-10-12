@@ -46,6 +46,7 @@ Options rejected and why. Omit the section if there are none.
 | [0015](0015-let-query-builder-use-the-cache.md) | Let the query builder use the read cache | accepted (amends 0010 and 0012) |
 | [0016](0016-let-bulk-upsert-restrict-updated-columns.md) | Let bulk_upsert_mappings restrict the columns updated on conflict | accepted (amends 0011 and 0012) |
 | [0017](0017-give-bulk-deletes-an-opt-in-soft-delete-mode.md) | Give bulk deletes an opt-in soft-delete mode and correct the mixin docs | accepted (amends 0004, 0005, 0011 and 0012) |
+| [0018](0018-bind-mixin-timestamps-as-naive-utc-and-validate-upsert-payloads.md) | Bind mixin timestamps as naive UTC and validate upsert payloads | accepted (amends 0004, 0005, 0012 and 0016) |
 
 ## Provenance
 
