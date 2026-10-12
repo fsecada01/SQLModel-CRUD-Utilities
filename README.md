@@ -47,6 +47,62 @@ streamline and expedite common database operations when using SQLModel, offering
 
 ---
 
+##  What's New in v0.4.0
+
+All additions are opt-in and backward compatible.
+
+```python
+from sqlmodel_crud_utils import (
+    InMemoryCache,
+    QueryBuilder,
+    TrackChangesMixin,
+    configure_cache,
+    get_change_history,
+    get_row,
+    register_change_tracking,
+)
+
+# Query builder: chain, then finish with all(), first() or count()
+ok, users = (
+    QueryBuilder(session, User)
+    .where(User.age >= 18, active=True)
+    .order_by("name")
+    .limit(20)
+    .all()
+)
+
+# get_rows-style suffix filters, loaders, and opt-in caching
+ok, users = (
+    QueryBuilder(session, User)
+    .where(age__gte=18, name__like="an")
+    .cached(ttl=60)  # needs configure_cache(), see below
+    .all()
+)
+
+# Read caching: nothing is cached until a backend is configured
+configure_cache(InMemoryCache())
+ok, user = get_row(1, session, User, use_cache=True, cache_ttl=60)
+
+# Change tracking: add the mixin to a model, then register once
+class Widget(TrackChangesMixin, SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+
+register_change_tracking()
+ok, history = get_change_history(session, Widget, 1)
+```
+
+What to know before caching a query (ADR-0012, ADR-0015):
+
+-   A cache hit returns new session-detached instances built from the model's own columns, so a relationship that loads eagerly by default comes back empty. This applies to `get_rows` as well as the builder.
+-   `.cached()` is silently skipped, and the query runs against the database, when the builder has a caller `stmnt`, uses `selectin()` or `lazy()`, reads a second table, or contains raw `text()` / `literal_column()`.
+-   Empty results (an empty `all()`, a `first()` that finds nothing, a zero `count()`) are never cached.
+-   Writes made through the helpers and `transaction()` invalidate the model's entries. A bare `session.commit()` or a write from outside the library does not; call `invalidate_cache(Model)` after it.
+
+Migration utilities (ADR-0013) and GraphQL support (ADR-0014) were evaluated and deliberately not built. The documentation site has recipes for calling the helpers from a Strawberry or Graphene resolver and for using Alembic with the mixins (`docs/recipes.html`).
+
+---
+
 ##  What's New in v0.2.0
 
 Version 0.2.0 brings significant enhancements focused on developer experience and production-ready features:
@@ -107,62 +163,6 @@ product.restore()                  # Restore it
 ```
 
 **100% Backward Compatible** - All v0.1.0 code continues to work without changes!
-
----
-
-##  What's New in v0.4.0
-
-All additions are opt-in and backward compatible.
-
-```python
-from sqlmodel_crud_utils import (
-    InMemoryCache,
-    QueryBuilder,
-    TrackChangesMixin,
-    configure_cache,
-    get_change_history,
-    get_row,
-    register_change_tracking,
-)
-
-# Query builder: chain, then finish with all(), first() or count()
-ok, users = (
-    QueryBuilder(session, User)
-    .where(User.age >= 18, active=True)
-    .order_by("name")
-    .limit(20)
-    .all()
-)
-
-# get_rows-style suffix filters, loaders, and opt-in caching
-ok, users = (
-    QueryBuilder(session, User)
-    .where(age__gte=18, name__like="an")
-    .cached(ttl=60)  # needs configure_cache(), see below
-    .all()
-)
-
-# Read caching: nothing is cached until a backend is configured
-configure_cache(InMemoryCache())
-ok, user = get_row(1, session, User, use_cache=True, cache_ttl=60)
-
-# Change tracking: add the mixin to a model, then register once
-class Widget(TrackChangesMixin, SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
-
-register_change_tracking()
-ok, history = get_change_history(session, Widget, 1)
-```
-
-What to know before caching a query (ADR-0012, ADR-0015):
-
--   A cache hit returns new session-detached instances built from the model's own columns, so a relationship that loads eagerly by default comes back empty. This applies to `get_rows` as well as the builder.
--   `.cached()` is silently skipped, and the query runs against the database, when the builder has a caller `stmnt`, uses `selectin()` or `lazy()`, reads a second table, or contains raw `text()` / `literal_column()`.
--   Empty results (an empty `all()`, a `first()` that finds nothing, a zero `count()`) are never cached.
--   Writes made through the helpers and `transaction()` invalidate the model's entries. A bare `session.commit()` or a write from outside the library does not; call `invalidate_cache(Model)` after it.
-
-Migration utilities (ADR-0013) and GraphQL support (ADR-0014) were evaluated and deliberately not built. The documentation site has recipes for calling the helpers from a Strawberry or Graphene resolver and for using Alembic with the mixins (`docs/recipes.html`).
 
 ---
 
