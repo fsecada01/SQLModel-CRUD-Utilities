@@ -19,6 +19,7 @@ Found by running the 0.4.0 candidate against `ranked_jobs_microservice` on real 
 - No schema change and no migration: the column type is still `TIMESTAMP WITHOUT TIME ZONE`, and Alembic compares `UTCDateTime` by its `DateTime` implementation. Existing rows keep their meaning (UTC wall-clock) because that is what correctly configured sessions already wrote.
 - Rows written earlier under a non-UTC session `TimeZone` on psycopg3 are already shifted; this is not repaired here.
 - `TimestampMixin` is unaffected: its `DateTime(timezone=True)` columns are server-filled.
+- `alembic revision --autogenerate` for a *new* table using these mixins renders `UTCDateTime` in the migration, so the migration module must import it (as it already must for `sqlmodel.sql.sqltypes.AutoString`). Existing tables produce no diff.
 - A payload that previously dropped an extra key now raises. This turns silent data loss into an error; payloads with differing keys never worked on a real database otherwise.
 - Callers who want a tz-aware column should declare `DateTime(timezone=True)` on their own model; that is a schema change and stays their decision.
 
