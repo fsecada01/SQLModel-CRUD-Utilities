@@ -15,7 +15,9 @@ New in v0.2.0 (see CHANGELOG.md for later releases):
 __version__ = "0.4.0"
 
 # Import asynchronous functions with a_ prefix
-from sqlmodel_crud_utils.a_sync import AsyncQueryBuilder
+from sqlmodel_crud_utils.a_sync import (
+    AsyncQueryBuilder,
+)
 from sqlmodel_crud_utils.a_sync import bulk_update_rows as a_bulk_update_rows
 from sqlmodel_crud_utils.a_sync import (
     bulk_upsert_mappings as a_bulk_upsert_mappings,
