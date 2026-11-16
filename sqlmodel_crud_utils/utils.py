@@ -5,9 +5,8 @@ import os
 from typing import Any, Iterator, Sequence
 
 from dateutil.parser import parse as date_parse
-from sqlalchemy import false, func
+from sqlalchemy import false, func, or_
 from sqlalchemy import inspect as sa_inspect
-from sqlalchemy import or_
 from sqlalchemy.orm import lazyload, selectinload
 from sqlalchemy.sql import operators
 from sqlalchemy.sql.elements import ColumnClause, TextClause
